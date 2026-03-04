@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { register } from '@/lib/queries';
 import { useAuth } from '@/providers/auth-provider';
 import { Card, Input, Button } from '@synapsehub/ui';
@@ -12,14 +13,25 @@ export default function RegisterPage() {
   const [displayName, setDisplayName] = useState('Owner');
   const [email, setEmail] = useState('owner@synapsehub.local');
   const [password, setPassword] = useState('password123');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
   const { setSession } = useAuth();
 
   const mutation = useMutation({
     mutationFn: () => register(email, password, displayName),
     onSuccess: (session) => {
+      setErrorMessage(null);
       setSession(session);
       router.push('/dashboard');
+    },
+    onError: (error) => {
+      const axiosError = error as AxiosError<{ message?: string | string[] }>;
+      const payloadMessage = axiosError.response?.data?.message;
+      if (Array.isArray(payloadMessage)) {
+        setErrorMessage(payloadMessage[0] ?? 'Registration failed. Please try again.');
+        return;
+      }
+      setErrorMessage(payloadMessage ?? 'Registration failed. Please try again.');
     },
   });
 
@@ -50,9 +62,7 @@ export default function RegisterPage() {
             <label className="mb-1 block text-sm font-semibold text-slate-700">Password</label>
             <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required />
           </div>
-          {mutation.isError && (
-            <p className="text-sm font-semibold text-red-600">Registration failed. Try a different email.</p>
-          )}
+          {mutation.isError && <p className="text-sm font-semibold text-red-600">{errorMessage}</p>}
           <Button type="submit" className="w-full" disabled={mutation.isPending}>
             {mutation.isPending ? 'Creating account...' : 'Register'}
           </Button>

@@ -44,6 +44,12 @@ async function bootstrap() {
         target,
         changeOrigin: true,
         ws: true,
+        pathRewrite: (path) => {
+          if (path.startsWith(route)) {
+            return path;
+          }
+          return `${route}${path}`;
+        },
       }),
     );
   });

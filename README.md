@@ -85,6 +85,7 @@ npm run prisma:migrate
 ## Documentation index
 
 - [Architecture Overview](docs/architecture-overview.md)
+- [Tech Stack and Containers](docs/tech-stack-and-containers.md)
 - [API Documentation](docs/api-documentation.md)
 - [Developer Setup](docs/developer-setup.md)
 - [Deployment Guide](docs/deployment-guide.md)
