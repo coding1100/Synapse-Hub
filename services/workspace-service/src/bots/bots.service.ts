@@ -3,6 +3,7 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { createHash, randomUUID } from 'crypto';
 import { CreateBotDto } from './dto/create-bot.dto';
 import { BotEventDto } from './dto/bot-event.dto';
+import { executeSlashCommand } from './command-runner';
 
 @Injectable()
 export class BotsService {
@@ -69,7 +70,7 @@ export class BotsService {
   async runSlashCommand(botId: string, channelId: string, command: string) {
     const bot = await this.ensureBot(botId);
 
-    const output = this.evaluateCommand(command);
+    const output = executeSlashCommand(command);
     const message = await this.createBotMessage(bot.workspaceId, channelId, bot.createdById, output);
 
     await this.prisma.botEvent.create({
@@ -100,23 +101,6 @@ export class BotsService {
       sent: true,
       message,
     };
-  }
-
-  private evaluateCommand(command: string) {
-    const trimmed = command.trim();
-    if (trimmed.startsWith('/echo ')) {
-      return trimmed.replace('/echo ', '');
-    }
-
-    if (trimmed === '/status') {
-      return 'SynapseHub bot subsystem is operational.';
-    }
-
-    if (trimmed === '/help') {
-      return 'Available commands: /echo, /status, /help';
-    }
-
-    return `Unknown command: ${trimmed}`;
   }
 
   private async createBotMessage(
