@@ -9,6 +9,8 @@ const proxyTable = [
   { route: '/auth', env: 'AUTH_SERVICE_URL', defaultUrl: 'http://localhost:4001' },
   { route: '/users', env: 'USER_SERVICE_URL', defaultUrl: 'http://localhost:4002' },
   { route: '/workspaces', env: 'WORKSPACE_SERVICE_URL', defaultUrl: 'http://localhost:4003' },
+  { route: '/bots', env: 'WORKSPACE_SERVICE_URL', defaultUrl: 'http://localhost:4003' },
+  { route: '/integrations', env: 'WORKSPACE_SERVICE_URL', defaultUrl: 'http://localhost:4003' },
   { route: '/channels', env: 'CHANNEL_SERVICE_URL', defaultUrl: 'http://localhost:4004' },
   { route: '/messages', env: 'MESSAGING_SERVICE_URL', defaultUrl: 'http://localhost:4005' },
   { route: '/threads', env: 'MESSAGING_SERVICE_URL', defaultUrl: 'http://localhost:4005' },
