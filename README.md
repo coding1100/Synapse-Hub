@@ -1,14 +1,100 @@
-﻿# SynapseHub
+# SynapseHub
 
-Slack-like collaboration platform monorepo.
+SynapseHub is a Slack-like, production-focused collaboration platform built as a TypeScript monorepo.
 
-This repository is implemented in phased commits:
-1. Repository bootstrap
-2. Backend services
-3. Database schema
-4. Realtime messaging
-5. Web frontend
-6. Bots/integrations
-7. Infrastructure
-8. Testing
-9. Documentation
+## Platform capabilities
+
+- Multi-workspace tenancy
+- Public/private/direct channels
+- Direct messages and threaded replies
+- Realtime messaging over Socket.IO + Redis Pub/Sub
+- File metadata + S3-compatible object storage wiring
+- In-app notifications
+- Search service with Elasticsearch integration path
+- Bot API and slash command execution
+- Integrations for GitHub, webhooks, and custom events
+- Admin-facing web console
+- Docker, Kubernetes, Terraform, Prometheus/Grafana/ELK support
+
+## Monorepo layout
+
+```text
+synapsehub/
+  apps/
+    api/
+    web/
+  services/
+    auth-service/
+    user-service/
+    workspace-service/
+    channel-service/
+    messaging-service/
+    notification-service/
+    file-service/
+    search-service/
+  packages/
+    ui/
+    shared/
+  infrastructure/
+    docker/
+    kubernetes/
+    terraform/
+  scripts/
+  docs/
+```
+
+## Quick start (local)
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Start the full local stack:
+
+```bash
+docker-compose up --build
+```
+
+3. Open services:
+
+- Web app: `http://localhost:3000`
+- API gateway: `http://localhost:4000`
+- Grafana: `http://localhost:3001` (`admin` / `admin`)
+- Prometheus: `http://localhost:9090`
+- Kibana: `http://localhost:5601`
+- MinIO Console: `http://localhost:9001`
+
+4. Seed initial data (optional, host environment):
+
+```bash
+npm run prisma:seed --workspace @synapsehub/shared
+```
+
+## Core scripts
+
+```bash
+npm run build
+npm test
+npm run test:e2e
+npm run prisma:generate
+npm run prisma:migrate
+```
+
+## Documentation index
+
+- [Architecture Overview](docs/architecture-overview.md)
+- [API Documentation](docs/api-documentation.md)
+- [Developer Setup](docs/developer-setup.md)
+- [Deployment Guide](docs/deployment-guide.md)
+- [Observability Guide](docs/observability.md)
+
+## Security baseline
+
+- JWT + refresh token auth
+- bcrypt password hashing
+- Role-based workspace permissions
+- Request validation and whitelisting
+- Audit logs for integration events and workspace operations
+- Rate-limit and CSRF expansion points documented for production hardening
