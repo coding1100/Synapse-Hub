@@ -15,7 +15,9 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
+      "@synapsehub/shared": ["packages/shared/src/index.ts"],
       "@synapsehub/shared/*": ["packages/shared/src/*"],
+      "@synapsehub/ui": ["packages/ui/src/index.ts"],
       "@synapsehub/ui/*": ["packages/ui/src/*"]
     }
   }

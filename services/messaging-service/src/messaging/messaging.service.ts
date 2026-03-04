@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Message, PrismaClient } from '@prisma/client';
 import { SendMessageDto } from './dto/send-message.dto';
 
 @Injectable()
@@ -56,7 +56,7 @@ export class MessagingService {
       });
     }
 
-    return message;
+    return this.serializeMessage(message);
   }
 
   async listMessages(channelId: string, cursor?: string, limit = 50) {
@@ -74,7 +74,7 @@ export class MessagingService {
     });
 
     return {
-      data,
+      data: data.map((message) => this.serializeMessage(message)),
       paging: {
         cursor: data.length === boundedLimit ? data[data.length - 1].id : null,
         limit: boundedLimit,
@@ -83,33 +83,37 @@ export class MessagingService {
   }
 
   async editMessage(messageId: string, content: string, editorUserId?: string) {
-    const message = await this.ensureMessage(messageId);
-    if (editorUserId && message.authorId !== editorUserId) {
+    const existingMessage = await this.ensureMessage(messageId);
+    if (editorUserId && existingMessage.authorId !== editorUserId) {
       throw new NotFoundException('Only author can edit message');
     }
 
-    return this.prisma.message.update({
+    const updatedMessage = await this.prisma.message.update({
       where: { id: messageId },
       data: {
         content,
         editedAt: new Date(),
       },
     });
+
+    return this.serializeMessage(updatedMessage);
   }
 
   async deleteMessage(messageId: string, deletedByUserId: string) {
-    const message = await this.ensureMessage(messageId);
-    if (message.authorId !== deletedByUserId) {
+    const existingMessage = await this.ensureMessage(messageId);
+    if (existingMessage.authorId !== deletedByUserId) {
       throw new NotFoundException('Only author can delete message');
     }
 
-    return this.prisma.message.update({
+    const deletedMessage = await this.prisma.message.update({
       where: { id: messageId },
       data: {
         deletedAt: new Date(),
         content: '[deleted]',
       },
     });
+
+    return this.serializeMessage(deletedMessage);
   }
 
   async reactToMessage(messageId: string, userId: string, emoji: string) {
@@ -210,7 +214,7 @@ export class MessagingService {
       update: {},
     });
 
-    return this.prisma.message.create({
+    const reply = await this.prisma.message.create({
       data: {
         workspaceId: thread.channel.workspaceId,
         channelId: thread.channelId,
@@ -221,6 +225,8 @@ export class MessagingService {
         sequence: (latest?.sequence ?? BigInt(0)) + BigInt(1),
       },
     });
+
+    return this.serializeMessage(reply);
   }
 
   async getThread(threadId: string) {
@@ -239,7 +245,7 @@ export class MessagingService {
 
     return {
       thread,
-      replies,
+      replies: replies.map((reply) => this.serializeMessage(reply)),
     };
   }
 
@@ -251,5 +257,12 @@ export class MessagingService {
       throw new NotFoundException('Message not found');
     }
     return message;
+  }
+
+  private serializeMessage(message: Message) {
+    return {
+      ...message,
+      sequence: Number(message.sequence),
+    };
   }
 }
