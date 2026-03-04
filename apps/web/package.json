@@ -1,0 +1,12 @@
+﻿{
+  "name": "@synapsehub/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo \"Web app scaffold pending phase 5\"",
+    "build": "echo \"Web app scaffold pending phase 5\"",
+    "start": "echo \"Web app scaffold pending phase 5\"",
+    "lint": "echo \"Web app scaffold pending phase 5\"",
+    "test": "echo \"Web app scaffold pending phase 5\""
+  }
+}
