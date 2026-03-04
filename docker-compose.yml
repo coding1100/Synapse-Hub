@@ -69,7 +69,12 @@ services:
         BUILD_WORKSPACE: "@synapsehub/shared"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
-    command: ["sh", "-c", "npm run prisma:deploy --workspace @synapsehub/shared"]
+    command:
+      [
+        "sh",
+        "-c",
+        "npm run prisma:deploy --workspace @synapsehub/shared && npm run prisma:push --workspace @synapsehub/shared",
+      ]
     depends_on:
       postgres:
         condition: service_healthy
