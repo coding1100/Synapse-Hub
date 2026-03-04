@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: synapsehub-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['api-gateway:4000']
+
+  - job_name: synapsehub-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - auth-service:4001
+          - user-service:4002
+          - workspace-service:4003
+          - channel-service:4004
+          - messaging-service:4005
+          - notification-service:4006
+          - file-service:4007
+          - search-service:4008

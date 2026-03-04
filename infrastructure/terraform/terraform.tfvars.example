@@ -1,0 +1,4 @@
+aws_region          = "us-east-1"
+project_name        = "synapsehub"
+environment         = "prod"
+db_password         = "replace-me-in-secrets-manager"

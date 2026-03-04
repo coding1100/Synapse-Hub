@@ -1,0 +1,262 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: synapsehub
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d synapsehub"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.2
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.2
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.15.2
+    volumes:
+      - ./infrastructure/docker/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    ports:
+      - "5044:5044"
+    depends_on:
+      - elasticsearch
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  migrator:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/shared"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
+    command: ["sh", "-c", "npm run prisma:deploy --workspace @synapsehub/shared"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/api"
+    environment:
+      PORT: 4000
+      AUTH_SERVICE_URL: http://auth-service:4001
+      USER_SERVICE_URL: http://user-service:4002
+      WORKSPACE_SERVICE_URL: http://workspace-service:4003
+      CHANNEL_SERVICE_URL: http://channel-service:4004
+      MESSAGING_SERVICE_URL: http://messaging-service:4005
+      NOTIFICATION_SERVICE_URL: http://notification-service:4006
+      FILE_SERVICE_URL: http://file-service:4007
+      SEARCH_SERVICE_URL: http://search-service:4008
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: change-me-access
+    ports:
+      - "4000:4000"
+    depends_on:
+      - auth-service
+      - user-service
+      - workspace-service
+      - channel-service
+      - messaging-service
+      - notification-service
+      - file-service
+      - search-service
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/auth-service"
+    environment:
+      PORT: 4001
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
+      JWT_ACCESS_SECRET: change-me-access
+      JWT_REFRESH_SECRET: change-me-refresh
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+
+  user-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/user-service"
+    environment:
+      PORT: 4002
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+
+  workspace-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/workspace-service"
+    environment:
+      PORT: 4003
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+
+  channel-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/channel-service"
+    environment:
+      PORT: 4004
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+
+  messaging-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/messaging-service"
+    environment:
+      PORT: 4005
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/notification-service"
+    environment:
+      PORT: 4006
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+
+  file-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/file-service"
+    environment:
+      PORT: 4007
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: synapsehub-files
+      S3_ACCESS_KEY: minio
+      S3_SECRET_KEY: minio123
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      minio:
+        condition: service_started
+
+  search-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/search-service"
+    environment:
+      PORT: 4008
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
+      ELASTICSEARCH_NODE: http://elasticsearch:9200
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/workspace.Dockerfile
+      args:
+        BUILD_WORKSPACE: "@synapsehub/web"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_WS_URL: http://localhost:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./infrastructure/docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api-gateway
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    depends_on:
+      - prometheus
+
+volumes:
+  pg_data:
+  es_data:
+  minio_data:

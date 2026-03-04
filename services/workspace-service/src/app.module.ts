@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health.controller';
+import { MetricsController } from './metrics.controller';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { BotsModule } from './bots/bots.module';
 import { IntegrationsModule } from './integrations/integrations.module';
@@ -12,6 +13,6 @@ import { IntegrationsModule } from './integrations/integrations.module';
     BotsModule,
     IntegrationsModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, MetricsController],
 })
 export class AppModule {}
