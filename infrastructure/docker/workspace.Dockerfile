@@ -10,6 +10,8 @@ COPY packages ./packages
 
 RUN npm ci
 
+RUN npm run prisma:generate --workspace @synapsehub/shared
+
 ARG BUILD_WORKSPACE
 RUN npm run build --workspace ${BUILD_WORKSPACE}
 
