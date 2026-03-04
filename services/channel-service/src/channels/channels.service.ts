@@ -1,49 +1,52 @@
-﻿import { Injectable, NotFoundException } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 import { CreateChannelDto } from './dto/create-channel.dto';
-
-type Channel = {
-  id: string;
-  workspaceId: string;
-  name: string;
-  topic?: string;
-  isPrivate: boolean;
-  isArchived: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-};
 
 @Injectable()
 export class ChannelsService {
-  private readonly channels = new Map<string, Channel>();
-  private readonly memberIndex = new Map<string, Set<string>>();
+  private readonly prisma = new PrismaClient();
 
-  create(dto: CreateChannelDto) {
-    const channel: Channel = {
-      id: uuidv4(),
-      workspaceId: dto.workspaceId,
-      name: dto.name,
-      topic: dto.topic,
-      isPrivate: dto.isPrivate ?? false,
-      isArchived: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  async create(dto: CreateChannelDto) {
+    const creatorId = dto.createdById ?? 'system-user';
 
-    this.channels.set(channel.id, channel);
-    this.memberIndex.set(channel.id, new Set());
+    await this.prisma.user.upsert({
+      where: { id: creatorId },
+      create: {
+        id: creatorId,
+        email: `${creatorId}@synapsehub.local`,
+        displayName: `user-${creatorId.slice(0, 6)}`,
+      },
+      update: {},
+    });
 
-    return channel;
+    return this.prisma.channel.create({
+      data: {
+        workspaceId: dto.workspaceId,
+        createdById: creatorId,
+        name: dto.name,
+        topic: dto.topic,
+        type: dto.isPrivate ? 'PRIVATE' : 'PUBLIC',
+      },
+    });
   }
 
-  list(workspaceId: string, cursor?: string, limit = 50) {
+  async list(workspaceId: string, cursor?: string, limit = 50) {
     const normalizedLimit = Math.max(1, Math.min(Number.isFinite(limit) ? limit : 50, 200));
-    const rows = [...this.channels.values()]
-      .filter((c) => c.workspaceId === workspaceId)
-      .sort((a, b) => a.id.localeCompare(b.id));
 
-    const startIdx = cursor ? Math.max(rows.findIndex((c) => c.id === cursor) + 1, 0) : 0;
-    const data = rows.slice(startIdx, startIdx + normalizedLimit);
+    const data = await this.prisma.channel.findMany({
+      where: { workspaceId },
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: normalizedLimit,
+      orderBy: { id: 'asc' },
+      include: {
+        _count: {
+          select: {
+            members: true,
+            messages: true,
+          },
+        },
+      },
+    });
 
     return {
       data,
@@ -54,44 +57,81 @@ export class ChannelsService {
     };
   }
 
-  join(channelId: string, userId: string) {
-    this.ensureChannel(channelId);
-    const members = this.memberIndex.get(channelId) ?? new Set<string>();
-    members.add(userId);
-    this.memberIndex.set(channelId, members);
+  async join(channelId: string, userId: string) {
+    await this.ensureChannel(channelId);
+
+    await this.prisma.user.upsert({
+      where: { id: userId },
+      create: {
+        id: userId,
+        email: `${userId}@synapsehub.local`,
+        displayName: `user-${userId.slice(0, 6)}`,
+      },
+      update: {},
+    });
+
+    const membership = await this.prisma.channelMember.upsert({
+      where: {
+        channelId_userId: {
+          channelId,
+          userId,
+        },
+      },
+      create: {
+        channelId,
+        userId,
+      },
+      update: {},
+    });
+
+    const members = await this.prisma.channelMember.count({ where: { channelId } });
+
     return {
-      channelId,
-      userId,
+      ...membership,
       joined: true,
-      members: members.size,
+      members,
     };
   }
 
-  leave(channelId: string, userId: string) {
-    this.ensureChannel(channelId);
-    const members = this.memberIndex.get(channelId) ?? new Set<string>();
-    members.delete(userId);
-    this.memberIndex.set(channelId, members);
+  async leave(channelId: string, userId: string) {
+    await this.ensureChannel(channelId);
+
+    await this.prisma.channelMember.deleteMany({
+      where: {
+        channelId,
+        userId,
+      },
+    });
+
+    const members = await this.prisma.channelMember.count({ where: { channelId } });
+
     return {
       channelId,
       userId,
       joined: false,
-      members: members.size,
+      members,
     };
   }
 
-  archive(channelId: string) {
-    const channel = this.ensureChannel(channelId);
-    channel.isArchived = true;
-    channel.updatedAt = new Date();
-    return channel;
+  async archive(channelId: string) {
+    await this.ensureChannel(channelId);
+
+    return this.prisma.channel.update({
+      where: { id: channelId },
+      data: {
+        isArchived: true,
+      },
+    });
   }
 
-  private ensureChannel(channelId: string): Channel {
-    const channel = this.channels.get(channelId);
+  private async ensureChannel(channelId: string) {
+    const channel = await this.prisma.channel.findUnique({
+      where: { id: channelId },
+      select: { id: true },
+    });
+
     if (!channel) {
       throw new NotFoundException('Channel not found');
     }
-    return channel;
   }
 }

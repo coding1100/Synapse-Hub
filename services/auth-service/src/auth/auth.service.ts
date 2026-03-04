@@ -1,46 +1,46 @@
-﻿import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
+import { PrismaClient } from '@prisma/client';
+import { createHash } from 'crypto';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
-type AuthUser = {
-  id: string;
-  email: string;
-  passwordHash: string;
-  displayName: string;
-  createdAt: Date;
-};
-
 @Injectable()
 export class AuthService {
-  private readonly usersByEmail = new Map<string, AuthUser>();
-  private readonly refreshTokens = new Set<string>();
+  private readonly prisma = new PrismaClient();
 
   constructor(private readonly jwtService: JwtService) {}
 
   async register(dto: RegisterDto) {
-    if (this.usersByEmail.has(dto.email.toLowerCase())) {
+    const email = dto.email.toLowerCase();
+    const existing = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (existing) {
       throw new UnauthorizedException('Email already exists');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
-    const user: AuthUser = {
-      id: uuidv4(),
-      email: dto.email.toLowerCase(),
-      passwordHash,
-      displayName: dto.displayName ?? dto.email.split('@')[0],
-      createdAt: new Date(),
-    };
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        displayName: dto.displayName ?? email.split('@')[0],
+      },
+    });
 
-    this.usersByEmail.set(user.email, user);
     return this.issueTokens(user.id, user.email, user.displayName);
   }
 
   async login(dto: LoginDto) {
-    const user = this.usersByEmail.get(dto.email.toLowerCase());
-    if (!user) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email.toLowerCase() },
+    });
+
+    if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -52,11 +52,7 @@ export class AuthService {
     return this.issueTokens(user.id, user.email, user.displayName);
   }
 
-  refresh(refreshToken: string) {
-    if (!this.refreshTokens.has(refreshToken)) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
+  async refresh(refreshToken: string) {
     const payload = this.jwtService.verify<{ sub: string; email: string; displayName: string }>(
       refreshToken,
       {
@@ -64,12 +60,34 @@ export class AuthService {
       },
     );
 
-    this.refreshTokens.delete(refreshToken);
+    const tokenHash = this.hashToken(refreshToken);
+    const current = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash },
+    });
+
+    if (!current || current.revokedAt || current.expiresAt < new Date()) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    await this.prisma.refreshToken.update({
+      where: { tokenHash },
+      data: { revokedAt: new Date() },
+    });
+
     return this.issueTokens(payload.sub, payload.email, payload.displayName);
   }
 
-  logout(refreshToken: string) {
-    this.refreshTokens.delete(refreshToken);
+  async logout(refreshToken: string) {
+    await this.prisma.refreshToken.updateMany({
+      where: {
+        tokenHash: this.hashToken(refreshToken),
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+
     return { success: true };
   }
 
@@ -81,36 +99,61 @@ export class AuthService {
     };
   }
 
-  oauthCallback(provider: 'google' | 'github') {
+  async oauthCallback(provider: 'google' | 'github') {
+    const providerAccountId = `dev-${Date.now()}`;
     const email = `${provider}.user.${Date.now()}@synapsehub.local`;
-    const existing = this.usersByEmail.get(email);
-    if (existing) {
-      return this.issueTokens(existing.id, existing.email, existing.displayName);
-    }
 
-    const newUser: AuthUser = {
-      id: uuidv4(),
-      email,
-      passwordHash: '',
-      displayName: `${provider}-user`,
-      createdAt: new Date(),
-    };
-    this.usersByEmail.set(email, newUser);
-    return this.issueTokens(newUser.id, newUser.email, newUser.displayName);
+    const user = await this.prisma.user.upsert({
+      where: { email },
+      create: {
+        email,
+        displayName: `${provider}-user`,
+      },
+      update: {
+        displayName: `${provider}-user`,
+      },
+    });
+
+    await this.prisma.oAuthAccount.upsert({
+      where: {
+        provider_providerAccountId: {
+          provider,
+          providerAccountId,
+        },
+      },
+      create: {
+        userId: user.id,
+        provider,
+        providerAccountId,
+      },
+      update: {
+        userId: user.id,
+      },
+    });
+
+    return this.issueTokens(user.id, user.email, user.displayName);
   }
 
-  private issueTokens(userId: string, email: string, displayName: string) {
+  private async issueTokens(userId: string, email: string, displayName: string) {
     const payload = { sub: userId, email, displayName };
+
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_ACCESS_SECRET ?? 'access-secret',
       expiresIn: '15m',
     });
+
     const refreshToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_REFRESH_SECRET ?? 'refresh-secret',
       expiresIn: '30d',
     });
 
-    this.refreshTokens.add(refreshToken);
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        tokenHash: this.hashToken(refreshToken),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
 
     return {
       user: {
@@ -123,5 +166,9 @@ export class AuthService {
       tokenType: 'Bearer',
       expiresIn: 900,
     };
+  }
+
+  private hashToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
   }
 }

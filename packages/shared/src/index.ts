@@ -3,3 +3,5 @@
   status: 'ok' | 'degraded' | 'down';
   timestamp: string;
 };
+
+export { prisma } from './prisma-client';

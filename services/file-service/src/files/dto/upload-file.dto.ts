@@ -1,6 +1,9 @@
-﻿import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class UploadFileDto {
+  @IsString()
+  workspaceId!: string;
+
   @IsString()
   @MaxLength(255)
   filename!: string;
@@ -14,6 +17,10 @@ export class UploadFileDto {
 
   @IsString()
   uploaderUserId!: string;
+
+  @IsString()
+  @IsOptional()
+  channelId?: string;
 
   @IsString()
   @IsOptional()

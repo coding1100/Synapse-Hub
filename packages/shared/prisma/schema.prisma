@@ -1,0 +1,377 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+enum ChannelType {
+  PUBLIC
+  PRIVATE
+  DIRECT
+}
+
+enum MessageType {
+  TEXT
+  SYSTEM
+  BOT
+}
+
+enum NotificationType {
+  MENTION
+  DIRECT_MESSAGE
+  THREAD_REPLY
+  CHANNEL_ACTIVITY
+  SYSTEM
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum IntegrationType {
+  GITHUB
+  WEBHOOK
+  CUSTOM
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  INVITE
+  LOGIN
+  LOGOUT
+  ROLE_CHANGE
+  BOT_COMMAND
+  INTEGRATION_EVENT
+}
+
+enum BotEventType {
+  MESSAGE_CREATED
+  MESSAGE_REACTION
+  CHANNEL_JOINED
+  SLASH_COMMAND
+}
+
+model User {
+  id                String             @id @default(uuid())
+  email             String             @unique
+  passwordHash      String?
+  displayName       String
+  avatarUrl         String?
+  title             String?
+  timezone          String?
+  isActive          Boolean            @default(true)
+  lastSeenAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+  oauthAccounts     OAuthAccount[]
+  refreshTokens     RefreshToken[]
+  workspaceMembers  WorkspaceMember[]
+  createdWorkspaces Workspace[]        @relation("WorkspaceOwner")
+  channelsCreated   Channel[]          @relation("ChannelCreator")
+  channelMembers    ChannelMember[]
+  messages          Message[]
+  reactions         Reaction[]
+  filesUploaded     File[]
+  notifications     Notification[]
+  botsCreated       Bot[]              @relation("BotCreator")
+  integrationsMade  Integration[]      @relation("IntegrationCreator")
+  auditLogs         AuditLog[]         @relation("AuditActor")
+  botEvents         BotEvent[]         @relation("BotEventActor")
+
+  @@index([createdAt])
+  @@index([displayName])
+  @@index([isActive, lastSeenAt])
+}
+
+model OAuthAccount {
+  id                String   @id @default(uuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@unique([userId, provider])
+  @@index([provider])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  issuedAt   DateTime @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Workspace {
+  id           String            @id @default(uuid())
+  name         String
+  slug         String            @unique
+  ownerId      String
+  logoUrl      String?
+  settings     Json?
+  isArchived   Boolean           @default(false)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  owner        User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members      WorkspaceMember[]
+  channels     Channel[]
+  messages     Message[]
+  files        File[]
+  bots         Bot[]
+  integrations Integration[]
+  auditLogs    AuditLog[]
+  botEvents    BotEvent[]
+
+  @@index([ownerId])
+  @@index([isArchived, createdAt])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  invitedById String?
+  joinedAt    DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId, role])
+  @@index([workspaceId, role])
+}
+
+model Channel {
+  id          String          @id @default(uuid())
+  workspaceId String
+  createdById String
+  name        String
+  topic       String?
+  type        ChannelType     @default(PUBLIC)
+  isArchived  Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   User            @relation("ChannelCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members     ChannelMember[]
+  messages    Message[]
+  threads     Thread[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, isArchived, createdAt])
+  @@index([type])
+}
+
+model ChannelMember {
+  id        String   @id @default(uuid())
+  channelId String
+  userId    String
+  joinedAt  DateTime @default(now())
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([userId, joinedAt])
+}
+
+model Message {
+  id              String      @id @default(uuid())
+  workspaceId     String
+  channelId       String
+  authorId        String
+  threadId        String?
+  parentMessageId String?
+  type            MessageType @default(TEXT)
+  content         String
+  sequence        BigInt
+  metadata        Json?
+  editedAt        DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  workspace       Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channel         Channel     @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  author          User        @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  thread          Thread?     @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  parentMessage   Message?    @relation("MessageReplies", fields: [parentMessageId], references: [id], onDelete: SetNull)
+  replies         Message[]   @relation("MessageReplies")
+  files           File[]
+  reactions       Reaction[]
+
+  @@unique([channelId, sequence])
+  @@index([workspaceId, createdAt])
+  @@index([channelId, createdAt])
+  @@index([threadId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model Thread {
+  id            String    @id @default(uuid())
+  workspaceId   String
+  channelId     String
+  rootMessageId String    @unique
+  createdById   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  channel       Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  messages      Message[]
+
+  @@index([workspaceId, channelId, createdAt])
+}
+
+model Reaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([userId, createdAt])
+}
+
+model File {
+  id             String    @id @default(uuid())
+  workspaceId    String
+  uploaderId     String
+  channelId      String?
+  messageId      String?
+  filename       String
+  mimeType       String
+  size           Int
+  bucket         String
+  objectKey      String
+  url            String
+  metadata       Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  uploader       User      @relation(fields: [uploaderId], references: [id], onDelete: Restrict)
+  message        Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([uploaderId, createdAt])
+  @@index([messageId])
+}
+
+model Notification {
+  id             String           @id @default(uuid())
+  userId         String
+  workspaceId    String?
+  type           NotificationType
+  title          String
+  body           String
+  entityType     String?
+  entityId       String?
+  isRead         Boolean          @default(false)
+  readAt         DateTime?
+  deliveryStatus DeliveryStatus   @default(PENDING)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+model Bot {
+  id           String     @id @default(uuid())
+  workspaceId  String
+  createdById  String
+  name         String
+  description  String?
+  tokenHash    String
+  scopes       String[]
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  workspace    Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy    User       @relation("BotCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  events       BotEvent[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, isActive])
+}
+
+model BotEvent {
+  id          String       @id @default(uuid())
+  workspaceId String
+  botId       String
+  actorId     String?
+  type        BotEventType
+  payload     Json
+  createdAt   DateTime     @default(now())
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  bot         Bot          @relation(fields: [botId], references: [id], onDelete: Cascade)
+  actor       User?        @relation("BotEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([botId, createdAt])
+}
+
+model Integration {
+  id          String          @id @default(uuid())
+  workspaceId String
+  createdById String
+  type        IntegrationType
+  name        String
+  config      Json
+  secret      String?
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   User            @relation("IntegrationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, type, isActive])
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  workspaceId String
+  actorId     String?
+  action      AuditAction
+  targetType  String
+  targetId    String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor       User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}

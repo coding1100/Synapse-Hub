@@ -1,72 +1,77 @@
-﻿import { Injectable, NotFoundException } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 import { SendMessageDto } from './dto/send-message.dto';
-
-type Message = {
-  id: string;
-  channelId: string;
-  userId: string;
-  content: string;
-  fileIds: string[];
-  threadId?: string;
-  sequence: number;
-  createdAt: Date;
-  updatedAt: Date;
-  editedAt?: Date;
-  deletedAt?: Date;
-};
-
-type Thread = {
-  id: string;
-  rootMessageId: string;
-  channelId: string;
-  createdAt: Date;
-};
-
-type Reaction = {
-  id: string;
-  messageId: string;
-  userId: string;
-  emoji: string;
-  createdAt: Date;
-};
 
 @Injectable()
 export class MessagingService {
-  private readonly messages = new Map<string, Message>();
-  private readonly messageIdsByChannel = new Map<string, string[]>();
-  private readonly reactionsByMessage = new Map<string, Reaction[]>();
-  private readonly threads = new Map<string, Thread>();
-  private sequence = 0;
+  private readonly prisma = new PrismaClient();
 
-  sendMessage(dto: SendMessageDto) {
-    const message: Message = {
-      id: uuidv4(),
-      channelId: dto.channelId,
-      userId: dto.userId,
-      content: dto.content,
-      fileIds: dto.fileIds ?? [],
-      threadId: dto.threadId,
-      sequence: ++this.sequence,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  async sendMessage(dto: SendMessageDto) {
+    const channel = await this.prisma.channel.findUnique({
+      where: { id: dto.channelId },
+      select: { id: true, workspaceId: true },
+    });
+    if (!channel) {
+      throw new NotFoundException('Channel not found');
+    }
 
-    this.messages.set(message.id, message);
-    const channelMessages = this.messageIdsByChannel.get(dto.channelId) ?? [];
-    channelMessages.push(message.id);
-    this.messageIdsByChannel.set(dto.channelId, channelMessages);
+    await this.prisma.user.upsert({
+      where: { id: dto.userId },
+      create: {
+        id: dto.userId,
+        email: `${dto.userId}@synapsehub.local`,
+        displayName: `user-${dto.userId.slice(0, 6)}`,
+      },
+      update: {},
+    });
+
+    const latest = await this.prisma.message.findFirst({
+      where: { channelId: dto.channelId },
+      orderBy: { sequence: 'desc' },
+      select: { sequence: true },
+    });
+
+    const sequence = (latest?.sequence ?? BigInt(0)) + BigInt(1);
+
+    const message = await this.prisma.message.create({
+      data: {
+        workspaceId: channel.workspaceId,
+        channelId: dto.channelId,
+        authorId: dto.userId,
+        content: dto.content,
+        threadId: dto.threadId,
+        sequence,
+      },
+    });
+
+    if (dto.fileIds?.length) {
+      await this.prisma.file.updateMany({
+        where: {
+          id: { in: dto.fileIds },
+        },
+        data: {
+          messageId: message.id,
+          channelId: dto.channelId,
+        },
+      });
+    }
 
     return message;
   }
 
-  listMessages(channelId: string, cursor?: string, limit = 50) {
+  async listMessages(channelId: string, cursor?: string, limit = 50) {
     const boundedLimit = Math.max(1, Math.min(Number.isFinite(limit) ? limit : 50, 200));
-    const ids = this.messageIdsByChannel.get(channelId) ?? [];
-    const messages = ids.map((id) => this.messages.get(id)).filter((m): m is Message => !!m);
 
-    const startIdx = cursor ? Math.max(messages.findIndex((m) => m.id === cursor) + 1, 0) : 0;
-    const data = messages.slice(startIdx, startIdx + boundedLimit);
+    const data = await this.prisma.message.findMany({
+      where: { channelId },
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: boundedLimit,
+      orderBy: { createdAt: 'asc' },
+      include: {
+        reactions: true,
+        files: true,
+      },
+    });
 
     return {
       data,
@@ -77,51 +82,64 @@ export class MessagingService {
     };
   }
 
-  editMessage(messageId: string, content: string, editorUserId?: string) {
-    const message = this.ensureMessage(messageId);
-    if (editorUserId && message.userId !== editorUserId) {
+  async editMessage(messageId: string, content: string, editorUserId?: string) {
+    const message = await this.ensureMessage(messageId);
+    if (editorUserId && message.authorId !== editorUserId) {
       throw new NotFoundException('Only author can edit message');
     }
 
-    message.content = content;
-    message.editedAt = new Date();
-    message.updatedAt = new Date();
-    this.messages.set(message.id, message);
-    return message;
+    return this.prisma.message.update({
+      where: { id: messageId },
+      data: {
+        content,
+        editedAt: new Date(),
+      },
+    });
   }
 
-  deleteMessage(messageId: string, deletedByUserId: string) {
-    const message = this.ensureMessage(messageId);
-    if (message.userId !== deletedByUserId) {
+  async deleteMessage(messageId: string, deletedByUserId: string) {
+    const message = await this.ensureMessage(messageId);
+    if (message.authorId !== deletedByUserId) {
       throw new NotFoundException('Only author can delete message');
     }
 
-    message.deletedAt = new Date();
-    message.content = '[deleted]';
-    message.updatedAt = new Date();
-    this.messages.set(message.id, message);
-    return message;
+    return this.prisma.message.update({
+      where: { id: messageId },
+      data: {
+        deletedAt: new Date(),
+        content: '[deleted]',
+      },
+    });
   }
 
-  reactToMessage(messageId: string, userId: string, emoji: string) {
-    this.ensureMessage(messageId);
-    const reactions = this.reactionsByMessage.get(messageId) ?? [];
-    const existing = reactions.find((r) => r.userId === userId && r.emoji === emoji);
-    if (existing) {
-      return existing;
-    }
+  async reactToMessage(messageId: string, userId: string, emoji: string) {
+    await this.ensureMessage(messageId);
 
-    const reaction: Reaction = {
-      id: uuidv4(),
-      messageId,
-      userId,
-      emoji,
-      createdAt: new Date(),
-    };
-    reactions.push(reaction);
-    this.reactionsByMessage.set(messageId, reactions);
+    await this.prisma.user.upsert({
+      where: { id: userId },
+      create: {
+        id: userId,
+        email: `${userId}@synapsehub.local`,
+        displayName: `user-${userId.slice(0, 6)}`,
+      },
+      update: {},
+    });
 
-    return reaction;
+    return this.prisma.reaction.upsert({
+      where: {
+        messageId_userId_emoji: {
+          messageId,
+          userId,
+          emoji,
+        },
+      },
+      create: {
+        messageId,
+        userId,
+        emoji,
+      },
+      update: {},
+    });
   }
 
   typing(channelId: string, userId: string) {
@@ -133,47 +151,91 @@ export class MessagingService {
     };
   }
 
-  createThread(rootMessageId: string, channelId: string) {
-    this.ensureMessage(rootMessageId);
-    const existing = [...this.threads.values()].find((t) => t.rootMessageId === rootMessageId);
-    if (existing) {
-      return existing;
+  async createThread(rootMessageId: string, channelId: string) {
+    const root = await this.prisma.message.findUnique({
+      where: { id: rootMessageId },
+      select: {
+        id: true,
+        workspaceId: true,
+        authorId: true,
+      },
+    });
+
+    if (!root) {
+      throw new NotFoundException('Root message not found');
     }
 
-    const thread: Thread = {
-      id: uuidv4(),
-      rootMessageId,
-      channelId,
-      createdAt: new Date(),
-    };
-    this.threads.set(thread.id, thread);
-    return thread;
-  }
-
-  replyInThread(threadId: string, userId: string, content: string) {
-    const thread = this.threads.get(threadId);
-    if (!thread) {
-      throw new NotFoundException('Thread not found');
-    }
-
-    return this.sendMessage({
-      channelId: thread.channelId,
-      userId,
-      content,
-      threadId,
-      fileIds: [],
+    return this.prisma.thread.upsert({
+      where: { rootMessageId },
+      create: {
+        rootMessageId,
+        channelId,
+        workspaceId: root.workspaceId,
+        createdById: root.authorId,
+      },
+      update: {},
     });
   }
 
-  getThread(threadId: string) {
-    const thread = this.threads.get(threadId);
+  async replyInThread(threadId: string, userId: string, content: string) {
+    const thread = await this.prisma.thread.findUnique({
+      where: { id: threadId },
+      include: {
+        channel: {
+          select: {
+            id: true,
+            workspaceId: true,
+          },
+        },
+      },
+    });
+
     if (!thread) {
       throw new NotFoundException('Thread not found');
     }
 
-    const replies = [...this.messages.values()]
-      .filter((m) => m.threadId === threadId)
-      .sort((a, b) => a.sequence - b.sequence);
+    const latest = await this.prisma.message.findFirst({
+      where: { channelId: thread.channelId },
+      orderBy: { sequence: 'desc' },
+      select: { sequence: true },
+    });
+
+    await this.prisma.user.upsert({
+      where: { id: userId },
+      create: {
+        id: userId,
+        email: `${userId}@synapsehub.local`,
+        displayName: `user-${userId.slice(0, 6)}`,
+      },
+      update: {},
+    });
+
+    return this.prisma.message.create({
+      data: {
+        workspaceId: thread.channel.workspaceId,
+        channelId: thread.channelId,
+        authorId: userId,
+        threadId,
+        parentMessageId: thread.rootMessageId,
+        content,
+        sequence: (latest?.sequence ?? BigInt(0)) + BigInt(1),
+      },
+    });
+  }
+
+  async getThread(threadId: string) {
+    const thread = await this.prisma.thread.findUnique({
+      where: { id: threadId },
+    });
+
+    if (!thread) {
+      throw new NotFoundException('Thread not found');
+    }
+
+    const replies = await this.prisma.message.findMany({
+      where: { threadId },
+      orderBy: { createdAt: 'asc' },
+    });
 
     return {
       thread,
@@ -181,8 +243,10 @@ export class MessagingService {
     };
   }
 
-  private ensureMessage(messageId: string) {
-    const message = this.messages.get(messageId);
+  private async ensureMessage(messageId: string) {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
     if (!message) {
       throw new NotFoundException('Message not found');
     }

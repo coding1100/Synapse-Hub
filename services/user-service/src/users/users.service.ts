@@ -1,87 +1,77 @@
-﻿import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { UpdateUserDto } from './dto/update-user.dto';
 
-type UserRecord = {
-  id: string;
-  email: string;
-  displayName: string;
-  title?: string;
-  timezone?: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
 @Injectable()
 export class UsersService {
-  private readonly users = new Map<string, UserRecord>();
+  private readonly prisma = new PrismaClient();
 
-  getOrCreateUser(userId: string) {
-    const existing = this.users.get(userId);
-    if (existing) {
-      return existing;
-    }
-
-    const user: UserRecord = {
-      id: userId,
-      email: `${userId}@synapsehub.local`,
-      displayName: `user-${userId.slice(0, 6)}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.users.set(user.id, user);
-    return user;
+  async getOrCreateUser(userId: string) {
+    return this.prisma.user.upsert({
+      where: { id: userId },
+      create: {
+        id: userId,
+        email: `${userId}@synapsehub.local`,
+        displayName: `user-${userId.slice(0, 6)}`,
+      },
+      update: {
+        lastSeenAt: new Date(),
+      },
+    });
   }
 
-  createInternal(email: string, displayName: string) {
-    const user: UserRecord = {
-      id: uuidv4(),
-      email,
-      displayName,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.users.set(user.id, user);
-    return user;
+  async createInternal(email: string, displayName: string) {
+    return this.prisma.user.create({
+      data: {
+        id: uuidv4(),
+        email,
+        displayName,
+      },
+    });
   }
 
-  getById(id: string) {
-    const user = this.users.get(id);
+  async getById(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
     return user;
   }
 
-  updateById(id: string, dto: UpdateUserDto) {
-    const user = this.getById(id);
-    const updated: UserRecord = {
-      ...user,
-      ...dto,
-      updatedAt: new Date(),
-    };
-    this.users.set(id, updated);
-    return updated;
+  async updateById(id: string, dto: UpdateUserDto) {
+    await this.getById(id);
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        displayName: dto.displayName,
+        title: dto.title,
+        timezone: dto.timezone,
+      },
+    });
   }
 
-  search(q?: string, cursor?: string, limit = 20) {
+  async search(q?: string, cursor?: string, limit = 20) {
     const normalizedLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 100)) : 20;
-    const sorted = [...this.users.values()].sort((a, b) => a.id.localeCompare(b.id));
 
-    const startIdx = cursor ? Math.max(sorted.findIndex((u) => u.id === cursor) + 1, 0) : 0;
-    const filtered = q
-      ? sorted.filter((u) =>
-          `${u.displayName} ${u.email}`.toLowerCase().includes(q.toLowerCase()),
-        )
-      : sorted;
-
-    const slice = filtered.slice(startIdx, startIdx + normalizedLimit);
-    const nextCursor = slice.length === normalizedLimit ? slice[slice.length - 1].id : null;
+    const data = await this.prisma.user.findMany({
+      where: q
+        ? {
+            OR: [
+              { displayName: { contains: q, mode: 'insensitive' } },
+              { email: { contains: q, mode: 'insensitive' } },
+            ],
+          }
+        : undefined,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: normalizedLimit,
+      orderBy: { id: 'asc' },
+    });
 
     return {
-      data: slice,
+      data,
       paging: {
-        cursor: nextCursor,
+        cursor: data.length === normalizedLimit ? data[data.length - 1].id : null,
         limit: normalizedLimit,
       },
     };

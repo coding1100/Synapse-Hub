@@ -1,68 +1,65 @@
-﻿import { Injectable, NotFoundException } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 import { UploadFileDto } from './dto/upload-file.dto';
-
-type FileRecord = {
-  id: string;
-  filename: string;
-  mimeType: string;
-  size: number;
-  uploaderUserId: string;
-  messageId?: string;
-  bucket: string;
-  objectKey: string;
-  url: string;
-  createdAt: Date;
-  deletedAt?: Date;
-};
 
 @Injectable()
 export class FilesService {
-  private readonly files = new Map<string, FileRecord>();
+  private readonly prisma = new PrismaClient();
 
-  upload(dto: UploadFileDto) {
+  async upload(dto: UploadFileDto) {
     const bucket = process.env.S3_BUCKET ?? 'synapsehub-files';
-    const id = uuidv4();
-    const objectKey = `${dto.uploaderUserId}/${id}/${dto.filename}`;
     const endpoint = process.env.S3_ENDPOINT ?? 'http://localhost:9000';
+    const objectKey = `${dto.uploaderUserId}/${Date.now()}-${dto.filename}`;
 
-    const file: FileRecord = {
-      id,
-      filename: dto.filename,
-      mimeType: dto.mimeType,
-      size: dto.size,
-      uploaderUserId: dto.uploaderUserId,
-      messageId: dto.messageId,
-      bucket,
-      objectKey,
-      url: `${endpoint}/${bucket}/${objectKey}`,
-      createdAt: new Date(),
-    };
+    await this.prisma.user.upsert({
+      where: { id: dto.uploaderUserId },
+      create: {
+        id: dto.uploaderUserId,
+        email: `${dto.uploaderUserId}@synapsehub.local`,
+        displayName: `user-${dto.uploaderUserId.slice(0, 6)}`,
+      },
+      update: {},
+    });
 
-    this.files.set(file.id, file);
-    return file;
+    return this.prisma.file.create({
+      data: {
+        workspaceId: dto.workspaceId,
+        uploaderId: dto.uploaderUserId,
+        channelId: dto.channelId,
+        messageId: dto.messageId,
+        filename: dto.filename,
+        mimeType: dto.mimeType,
+        size: dto.size,
+        bucket,
+        objectKey,
+        url: `${endpoint}/${bucket}/${objectKey}`,
+      },
+    });
   }
 
-  get(fileId: string) {
-    const file = this.files.get(fileId);
+  async get(fileId: string) {
+    const file = await this.prisma.file.findUnique({ where: { id: fileId } });
     if (!file || file.deletedAt) {
       throw new NotFoundException('File not found');
     }
     return file;
   }
 
-  remove(fileId: string) {
-    const file = this.files.get(fileId);
+  async remove(fileId: string) {
+    const file = await this.prisma.file.findUnique({ where: { id: fileId } });
     if (!file || file.deletedAt) {
       throw new NotFoundException('File not found');
     }
 
-    file.deletedAt = new Date();
-    this.files.set(file.id, file);
+    const removed = await this.prisma.file.update({
+      where: { id: fileId },
+      data: { deletedAt: new Date() },
+    });
+
     return {
-      id: file.id,
+      id: removed.id,
       deleted: true,
-      deletedAt: file.deletedAt,
+      deletedAt: removed.deletedAt,
     };
   }
 }

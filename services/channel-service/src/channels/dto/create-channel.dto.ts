@@ -1,4 +1,4 @@
-﻿import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateChannelDto {
   @IsString()
@@ -15,4 +15,8 @@ export class CreateChannelDto {
   @IsBoolean()
   @IsOptional()
   isPrivate?: boolean;
+
+  @IsString()
+  @IsOptional()
+  createdById?: string;
 }
