@@ -3,12 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --surface: #f4f7f8;
-  --surface-strong: #ffffff;
-  --ink: #1f2a37;
-  --muted: #607488;
-  --accent: #eb5e28;
-  --ocean: #2f6690;
+  --surface: #f3f6fb;
+  --surface-tint: #eef3fb;
+  --surface-elevated: #ffffff;
+  --ink: #0f172a;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-deep: #1d4ed8;
+  --ocean: #0b1220;
+  --aqua: #22c55e;
+  --line: #e5e7eb;
 }
 
 * {
@@ -19,16 +23,78 @@ html,
 body {
   margin: 0;
   padding: 0;
-  font-family: "IBM Plex Sans", sans-serif;
+  font-family: var(--font-body), "IBM Plex Sans", sans-serif;
   color: var(--ink);
   background:
-    radial-gradient(circle at 20% 20%, rgba(215, 243, 227, 0.75), transparent 38%),
-    radial-gradient(circle at 90% 10%, rgba(47, 102, 144, 0.16), transparent 32%),
+    radial-gradient(circle at 10% 10%, rgba(37, 99, 235, 0.1), transparent 28%),
+    radial-gradient(circle at 90% 15%, rgba(16, 185, 129, 0.08), transparent 32%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.55) 0%, rgba(238, 243, 251, 0.72) 100%),
     var(--surface);
   min-height: 100%;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  letter-spacing: -0.02em;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+@layer components {
+  .app-glass {
+    @apply rounded-[22px] bg-white/95;
+  }
+
+  .app-section-title {
+    @apply text-2xl font-bold text-slate-900;
+  }
+
+  .app-subtitle {
+    @apply text-sm text-slate-500;
+  }
+
+  .app-select {
+    @apply rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100;
+  }
+
+  .app-muted-box {
+    @apply rounded-xl border border-slate-200 bg-slate-50/90 p-3;
+  }
+
+  .app-kicker {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500;
+  }
+
+  .app-soft-border {
+    @apply border border-slate-200;
+  }
+
+  .app-chip {
+    @apply inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600;
+  }
+
+  .app-stat {
+    @apply rounded-2xl bg-white p-4;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-glass {
+    border-radius: 18px;
+  }
+
+  .app-stat {
+    border-radius: 16px;
+    padding: 0.85rem;
+  }
+
+  .app-chip {
+    font-size: 11px;
+    padding: 0.2rem 0.55rem;
+  }
 }

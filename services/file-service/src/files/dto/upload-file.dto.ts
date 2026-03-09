@@ -14,10 +14,6 @@ export class UploadFileDto {
   @IsInt()
   @Min(1)
   size!: number;
-
-  @IsString()
-  uploaderUserId!: string;
-
   @IsString()
   @IsOptional()
   channelId?: string;

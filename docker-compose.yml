@@ -73,7 +73,7 @@ services:
       [
         "sh",
         "-c",
-        "npm run prisma:deploy --workspace @synapsehub/shared && npm run prisma:push --workspace @synapsehub/shared",
+        "npm run prisma:deploy --workspace @synapsehub/shared",
       ]
     depends_on:
       postgres:
@@ -97,6 +97,8 @@ services:
       SEARCH_SERVICE_URL: http://search-service:4008
       REDIS_URL: redis://redis:6379
       JWT_ACCESS_SECRET: change-me-access
+      CORS_ORIGIN: http://localhost:3000
+      RATE_LIMIT_PER_MINUTE: 300
     ports:
       - "4000:4000"
     depends_on:
@@ -120,6 +122,9 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
       JWT_ACCESS_SECRET: change-me-access
       JWT_REFRESH_SECRET: change-me-refresh
+      PUBLIC_WEB_URL: http://localhost:3000
+      EMAIL_PROVIDER: console
+      EMAIL_FROM: SynapseHub <no-reply@synapsehub.local>
     depends_on:
       migrator:
         condition: service_completed_successfully
@@ -146,6 +151,9 @@ services:
     environment:
       PORT: 4003
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/synapsehub
+      PUBLIC_WEB_URL: http://localhost:3000
+      EMAIL_PROVIDER: console
+      EMAIL_FROM: SynapseHub <no-reply@synapsehub.local>
     depends_on:
       migrator:
         condition: service_completed_successfully
@@ -265,3 +273,5 @@ volumes:
   pg_data:
   es_data:
   minio_data:
+
+

@@ -8,8 +8,10 @@ Base URL (gateway): `http://localhost:4000`
 - `POST /auth/login`
 - `POST /auth/refresh`
 - `POST /auth/logout`
-- `GET /auth/oauth/google`
-- `GET /auth/oauth/github`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
+- `POST /auth/verify-email`
+- `POST /auth/resend-verification`
 
 ## Users
 
@@ -24,6 +26,10 @@ Base URL (gateway): `http://localhost:4000`
 - `GET /workspaces`
 - `GET /workspaces/:id/members`
 - `POST /workspaces/:id/invite`
+- `POST /workspaces/:id/invite-links`
+- `GET /workspaces/:id/invite-links`
+- `POST /workspaces/:id/invite-links/:inviteLinkId/revoke`
+- `POST /workspaces/invite-links/:code/accept`
 - `PATCH /workspaces/:id/members/:userId/role`
 
 ## Channels
@@ -74,9 +80,15 @@ Base URL (gateway): `http://localhost:4000`
 
 - `POST /integrations`
 - `GET /integrations?workspaceId=&type=`
-- `POST /integrations/:id/events/github`
 - `POST /integrations/:id/events/webhook`
 - `POST /integrations/:id/events/custom`
+
+## Explicitly out of scope
+
+- Third-party product connectors: GitHub webhooks, Jira, ServiceNow, PagerDuty
+- Third-party identity providers: Google OAuth, GitHub OAuth, enterprise SSO/SCIM
+- Monetization stack: Stripe subscriptions, Stripe webhooks, customer portal
+- Microsoft Purview eDiscovery
 
 ## Realtime socket events (`/ws`)
 

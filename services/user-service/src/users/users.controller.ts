@@ -1,4 +1,14 @@
-﻿import { Controller, Get, Headers, NotFoundException, Param, Patch, Query, Body } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Query,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
@@ -9,11 +19,7 @@ export class UsersController {
 
   @Get('me')
   me(@Headers('x-user-id') userId?: string) {
-    if (!userId) {
-      throw new NotFoundException('Missing x-user-id header');
-    }
-
-    return this.usersService.getOrCreateUser(userId);
+    return this.usersService.getOrCreateUser(this.requireUserId(userId));
   }
 
   @Get(':id')
@@ -22,12 +28,31 @@ export class UsersController {
   }
 
   @Patch(':id')
-  updateById(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+  updateById(@Param('id') id: string, @Body() dto: UpdateUserDto, @Headers('x-user-id') requesterId?: string) {
+    const currentUserId = this.requireUserId(requesterId);
+    if (currentUserId !== id) {
+      throw new ForbiddenException('Users can only update their own profile');
+    }
+
     return this.usersService.updateById(id, dto);
   }
 
   @Get()
-  search(@Query() query: SearchUsersDto) {
-    return this.usersService.search(query.q, query.cursor, Number(query.limit ?? '20'));
+  search(@Query() query: SearchUsersDto, @Headers('x-user-id') userId?: string) {
+    return this.usersService.search(
+      query.q,
+      query.cursor,
+      Number(query.limit ?? '20'),
+      query.workspaceId,
+      userId,
+    );
+  }
+
+  private requireUserId(userId?: string) {
+    if (!userId) {
+      throw new UnauthorizedException('Missing x-user-id header');
+    }
+
+    return userId;
   }
 }

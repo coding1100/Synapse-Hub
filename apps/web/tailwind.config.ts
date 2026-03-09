@@ -9,15 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        base: '#f4f7f8',
-        ink: '#1f2a37',
-        accent: '#eb5e28',
-        accentDeep: '#c34f1f',
-        ocean: '#2f6690',
-        mint: '#d7f3e3',
+        base: '#f3f6fb',
+        ink: '#0f172a',
+        accent: '#2563eb',
+        accentDeep: '#1d4ed8',
+        ocean: '#0b1220',
+        mint: '#e8f5ee',
       },
       boxShadow: {
-        panel: '0 20px 40px rgba(25, 37, 44, 0.08)',
+        panel: '0 16px 36px rgba(15, 23, 42, 0.08)',
       },
       fontFamily: {
         display: ['"Space Grotesk"', 'sans-serif'],

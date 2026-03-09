@@ -1,5 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@prisma/client';
+import {
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma, PrismaClient, WorkspaceRole } from '@prisma/client';
 import { createHash, randomUUID } from 'crypto';
 import { CreateBotDto } from './dto/create-bot.dto';
 import { BotEventDto } from './dto/bot-event.dto';
@@ -10,17 +15,11 @@ export class BotsService {
   private readonly prisma = new PrismaClient();
 
   async create(dto: CreateBotDto) {
-    await this.ensureWorkspace(dto.workspaceId);
+    if (!dto.createdById) {
+      throw new ForbiddenException('Missing actor user id');
+    }
 
-    await this.prisma.user.upsert({
-      where: { id: dto.createdById },
-      create: {
-        id: dto.createdById,
-        email: `${dto.createdById}@synapsehub.local`,
-        displayName: `user-${dto.createdById.slice(0, 6)}`,
-      },
-      update: {},
-    });
+    await this.ensureWorkspaceAdminOrOwner(dto.workspaceId, dto.createdById);
 
     const token = `shb_${randomUUID().replace(/-/g, '')}`;
 
@@ -41,15 +40,28 @@ export class BotsService {
     };
   }
 
-  async list(workspaceId: string) {
+  async list(workspaceId: string, requesterId: string) {
+    await this.ensureWorkspaceAdminOrOwner(workspaceId, requesterId);
+
     return this.prisma.bot.findMany({
       where: { workspaceId },
       orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        workspaceId: true,
+        createdById: true,
+        name: true,
+        description: true,
+        scopes: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 
-  async recordEvent(botId: string, dto: BotEventDto) {
-    const bot = await this.ensureBot(botId);
+  async recordEvent(botId: string, dto: BotEventDto, botToken: string) {
+    const bot = await this.authenticateBot(botId, botToken, 'events:read');
 
     const event = await this.prisma.botEvent.create({
       data: {
@@ -67,8 +79,8 @@ export class BotsService {
     };
   }
 
-  async runSlashCommand(botId: string, channelId: string, command: string) {
-    const bot = await this.ensureBot(botId);
+  async runSlashCommand(botId: string, channelId: string, command: string, botToken: string) {
+    const bot = await this.authenticateBot(botId, botToken, 'commands:execute');
 
     const output = executeSlashCommand(command);
     const message = await this.createBotMessage(bot.workspaceId, channelId, bot.createdById, output);
@@ -93,8 +105,8 @@ export class BotsService {
     };
   }
 
-  async sendMessage(botId: string, channelId: string, content: string) {
-    const bot = await this.ensureBot(botId);
+  async sendMessage(botId: string, channelId: string, content: string, botToken: string) {
+    const bot = await this.authenticateBot(botId, botToken, 'messages:write');
     const message = await this.createBotMessage(bot.workspaceId, channelId, bot.createdById, content);
 
     return {
@@ -109,21 +121,12 @@ export class BotsService {
     authorId: string,
     content: string,
   ) {
-    const latest = await this.prisma.message.findFirst({
-      where: { channelId },
-      orderBy: { sequence: 'desc' },
-      select: { sequence: true },
-    });
-
-    const created = await this.prisma.message.create({
-      data: {
-        workspaceId,
-        channelId,
-        authorId,
-        type: 'BOT',
-        content,
-        sequence: (latest?.sequence ?? BigInt(0)) + BigInt(1),
-      },
+    await this.ensureChannelInWorkspace(channelId, workspaceId);
+    const created = await this.createBotMessageWithRetry({
+      workspaceId,
+      channelId,
+      authorId,
+      content,
     });
 
     return {
@@ -132,14 +135,52 @@ export class BotsService {
     };
   }
 
-  private async ensureWorkspace(workspaceId: string) {
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { id: true },
+  private async authenticateBot(botId: string, botToken: string, requiredScope: string) {
+    const bot = await this.ensureBot(botId);
+
+    if (this.hash(botToken) !== bot.tokenHash) {
+      throw new ForbiddenException('Invalid bot token');
+    }
+
+    if (!bot.scopes.includes(requiredScope)) {
+      throw new ForbiddenException(`Bot does not have required scope: ${requiredScope}`);
+    }
+
+    return bot;
+  }
+
+  private async ensureWorkspaceAdminOrOwner(workspaceId: string, userId: string) {
+    const membership = await this.prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId,
+        },
+      },
+      select: { role: true },
     });
 
-    if (!workspace) {
-      throw new NotFoundException('Workspace not found');
+    if (!membership) {
+      throw new ForbiddenException('User is not a member of this workspace');
+    }
+
+    if (membership.role !== WorkspaceRole.OWNER && membership.role !== WorkspaceRole.ADMIN) {
+      throw new ForbiddenException('Only owner or admin can manage bots');
+    }
+  }
+
+  private async ensureChannelInWorkspace(channelId: string, workspaceId: string) {
+    const channel = await this.prisma.channel.findUnique({
+      where: { id: channelId },
+      select: {
+        id: true,
+        workspaceId: true,
+        isArchived: true,
+      },
+    });
+
+    if (!channel || channel.workspaceId !== workspaceId || channel.isArchived) {
+      throw new NotFoundException('Channel not found in workspace');
     }
   }
 
@@ -157,5 +198,48 @@ export class BotsService {
 
   private hash(raw: string) {
     return createHash('sha256').update(raw).digest('hex');
+  }
+
+  private async createBotMessageWithRetry(
+    input: {
+      workspaceId: string;
+      channelId: string;
+      authorId: string;
+      content: string;
+    },
+    maxAttempts = 5,
+  ) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const sequence = await this.nextSequence(input.channelId);
+
+      try {
+        return await this.prisma.message.create({
+          data: {
+            ...input,
+            type: 'BOT',
+            sequence,
+          },
+        });
+      } catch (error) {
+        const isConflict =
+          error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+
+        if (!isConflict || attempt === maxAttempts) {
+          throw error;
+        }
+      }
+    }
+
+    throw new InternalServerErrorException('Unable to allocate bot message sequence');
+  }
+
+  private async nextSequence(channelId: string) {
+    const latest = await this.prisma.message.findFirst({
+      where: { channelId },
+      orderBy: { sequence: 'desc' },
+      select: { sequence: true },
+    });
+
+    return (latest?.sequence ?? BigInt(0)) + BigInt(1);
   }
 }

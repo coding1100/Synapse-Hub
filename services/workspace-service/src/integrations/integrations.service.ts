@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { IntegrationType, Prisma, PrismaClient } from '@prisma/client';
-import { createHash } from 'crypto';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { IntegrationType, Prisma, PrismaClient, WorkspaceRole } from '@prisma/client';
+import { createHash, randomUUID } from 'crypto';
 import { CreateIntegrationDto } from './dto/create-integration.dto';
 
 @Injectable()
@@ -8,71 +8,64 @@ export class IntegrationsService {
   private readonly prisma = new PrismaClient();
 
   async create(dto: CreateIntegrationDto) {
-    await this.ensureWorkspace(dto.workspaceId);
+    if (!dto.createdById) {
+      throw new ForbiddenException('Missing actor user id');
+    }
 
-    await this.prisma.user.upsert({
-      where: { id: dto.createdById },
-      create: {
-        id: dto.createdById,
-        email: `${dto.createdById}@synapsehub.local`,
-        displayName: `user-${dto.createdById.slice(0, 6)}`,
-      },
-      update: {},
-    });
+    await this.ensureWorkspaceAdminOrOwner(dto.workspaceId, dto.createdById);
 
-    return this.prisma.integration.create({
+    const signingSecret = dto.secret ?? randomUUID().replace(/-/g, '');
+
+    const integration = await this.prisma.integration.create({
       data: {
         workspaceId: dto.workspaceId,
         createdById: dto.createdById,
         type: dto.type,
         name: dto.name,
         config: dto.config as Prisma.InputJsonValue,
-        secret: dto.secret ? this.hash(dto.secret) : undefined,
+        secret: this.hash(signingSecret),
       },
     });
-  }
 
-  async list(workspaceId: string, type?: IntegrationType) {
-    return this.prisma.integration.findMany({
-      where: {
-        workspaceId,
-        ...(type ? { type } : {}),
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async handleGithubEvent(
-    integrationId: string,
-    event: string,
-    payload: Record<string, unknown>,
-  ) {
-    const integration = await this.ensureIntegration(integrationId);
-
-    await this.prisma.auditLog.create({
-      data: {
-        workspaceId: integration.workspaceId,
-        actorId: integration.createdById,
-        action: 'INTEGRATION_EVENT',
-        targetType: 'integration:github',
-        targetId: integration.id,
-        metadata: {
-          event,
-          payload,
-        } as Prisma.InputJsonValue,
-      },
-    });
+    const { secret: _, ...publicIntegration } = integration;
 
     return {
-      accepted: true,
-      provider: 'github',
-      event,
-      integrationId,
+      ...publicIntegration,
+      signingSecret,
     };
   }
 
-  async handleWebhookEvent(integrationId: string, payload: Record<string, unknown>) {
-    const integration = await this.ensureIntegration(integrationId);
+  async list(workspaceId: string, requesterId: string, type?: IntegrationType) {
+    await this.ensureWorkspaceAdminOrOwner(workspaceId, requesterId);
+
+    return this.prisma.integration.findMany({
+      where: {
+        workspaceId,
+        type: type ?? {
+          in: [IntegrationType.WEBHOOK, IntegrationType.CUSTOM],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        workspaceId: true,
+        createdById: true,
+        type: true,
+        name: true,
+        config: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async handleWebhookEvent(
+    integrationId: string,
+    payload: Record<string, unknown>,
+    providedSecret: string,
+  ) {
+    const integration = await this.ensureIntegration(integrationId, providedSecret);
 
     await this.prisma.auditLog.create({
       data: {
@@ -96,8 +89,9 @@ export class IntegrationsService {
     integrationId: string,
     event: string,
     payload: Record<string, unknown>,
+    providedSecret: string,
   ) {
-    const integration = await this.ensureIntegration(integrationId);
+    const integration = await this.ensureIntegration(integrationId, providedSecret);
 
     await this.prisma.auditLog.create({
       data: {
@@ -121,24 +115,41 @@ export class IntegrationsService {
     };
   }
 
-  private async ensureWorkspace(workspaceId: string) {
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { id: true },
+  private async ensureWorkspaceAdminOrOwner(workspaceId: string, userId: string) {
+    const membership = await this.prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId,
+        },
+      },
+      select: { role: true },
     });
 
-    if (!workspace) {
-      throw new NotFoundException('Workspace not found');
+    if (!membership) {
+      throw new ForbiddenException('User is not a member of this workspace');
+    }
+
+    if (membership.role !== WorkspaceRole.OWNER && membership.role !== WorkspaceRole.ADMIN) {
+      throw new ForbiddenException('Only owner or admin can manage integrations');
     }
   }
 
-  private async ensureIntegration(integrationId: string) {
+  private async ensureIntegration(integrationId: string, providedSecret: string) {
     const integration = await this.prisma.integration.findUnique({
       where: { id: integrationId },
     });
 
     if (!integration || !integration.isActive) {
       throw new NotFoundException('Integration not found or inactive');
+    }
+
+    if (!integration.secret) {
+      throw new ForbiddenException('Integration secret is not configured');
+    }
+
+    if (integration.secret !== this.hash(providedSecret)) {
+      throw new ForbiddenException('Invalid integration secret');
     }
 
     return integration;

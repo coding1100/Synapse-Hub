@@ -65,10 +65,19 @@ enum BotEventType {
   SLASH_COMMAND
 }
 
+enum ScheduledMessageStatus {
+  PENDING
+  PROCESSING
+  SENT
+  CANCELED
+  FAILED
+}
+
 model User {
   id                String             @id @default(uuid())
   email             String             @unique
   passwordHash      String?
+  emailVerifiedAt   DateTime?
   displayName       String
   avatarUrl         String?
   title             String?
@@ -80,16 +89,24 @@ model User {
   deletedAt         DateTime?
   oauthAccounts     OAuthAccount[]
   refreshTokens     RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens PasswordResetToken[]
   workspaceMembers  WorkspaceMember[]
   createdWorkspaces Workspace[]        @relation("WorkspaceOwner")
   channelsCreated   Channel[]          @relation("ChannelCreator")
   channelMembers    ChannelMember[]
   messages          Message[]
+  messagePins       MessagePin[]
+  bookmarks         Bookmark[]
+  drafts            MessageDraft[]
+  scheduledMessages ScheduledMessage[] @relation("ScheduledAuthor")
   reactions         Reaction[]
   filesUploaded     File[]
   notifications     Notification[]
   botsCreated       Bot[]              @relation("BotCreator")
   integrationsMade  Integration[]      @relation("IntegrationCreator")
+  inviteLinksCreated WorkspaceInviteLink[] @relation("InviteLinkCreator")
+  acceptedInviteLinks WorkspaceInviteAcceptance[] @relation("InviteLinkAcceptor")
   auditLogs         AuditLog[]         @relation("AuditActor")
   botEvents         BotEvent[]         @relation("BotEventActor")
 
@@ -127,6 +144,30 @@ model RefreshToken {
   @@index([userId, expiresAt])
 }
 
+model EmailVerificationToken {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
 model Workspace {
   id           String            @id @default(uuid())
   name         String
@@ -141,9 +182,15 @@ model Workspace {
   members      WorkspaceMember[]
   channels     Channel[]
   messages     Message[]
+  pins         MessagePin[]
+  bookmarks    Bookmark[]
+  drafts       MessageDraft[]
+  scheduledMessages ScheduledMessage[]
   files        File[]
   bots         Bot[]
   integrations Integration[]
+  inviteLinks  WorkspaceInviteLink[]
+  inviteAcceptances WorkspaceInviteAcceptance[]
   auditLogs    AuditLog[]
   botEvents    BotEvent[]
 
@@ -182,6 +229,10 @@ model Channel {
   createdBy   User            @relation("ChannelCreator", fields: [createdById], references: [id], onDelete: Restrict)
   members     ChannelMember[]
   messages    Message[]
+  pins        MessagePin[]
+  bookmarks   Bookmark[]
+  drafts      MessageDraft[]
+  scheduledMessages ScheduledMessage[]
   threads     Thread[]
 
   @@unique([workspaceId, name])
@@ -222,6 +273,9 @@ model Message {
   thread          Thread?     @relation(fields: [threadId], references: [id], onDelete: SetNull)
   parentMessage   Message?    @relation("MessageReplies", fields: [parentMessageId], references: [id], onDelete: SetNull)
   replies         Message[]   @relation("MessageReplies")
+  scheduledMessage ScheduledMessage? @relation("SentScheduledMessage")
+  pin             MessagePin?
+  bookmarks       Bookmark[]
   files           File[]
   reactions       Reaction[]
 
@@ -242,6 +296,8 @@ model Thread {
   updatedAt     DateTime  @updatedAt
   channel       Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
   messages      Message[]
+  drafts        MessageDraft[]
+  scheduledMessages ScheduledMessage[]
 
   @@index([workspaceId, channelId, createdAt])
 }
@@ -282,6 +338,89 @@ model File {
   @@index([workspaceId, createdAt])
   @@index([uploaderId, createdAt])
   @@index([messageId])
+}
+
+model MessagePin {
+  id          String    @id @default(uuid())
+  workspaceId String
+  channelId   String
+  messageId   String    @unique
+  pinnedById  String
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channel     Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  message     Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  pinnedBy    User      @relation(fields: [pinnedById], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, createdAt])
+  @@index([channelId, createdAt])
+}
+
+model Bookmark {
+  id          String    @id @default(uuid())
+  userId      String
+  workspaceId String
+  channelId   String
+  messageId   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channel     Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  message     Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, messageId])
+  @@index([userId, workspaceId, createdAt])
+  @@index([channelId, createdAt])
+}
+
+model MessageDraft {
+  id          String    @id @default(uuid())
+  userId      String
+  workspaceId String
+  channelId   String
+  threadId    String?
+  threadKey   String    @default("")
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channel     Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  thread      Thread?   @relation(fields: [threadId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, channelId, threadKey])
+  @@index([workspaceId, userId, updatedAt])
+  @@index([channelId, userId, updatedAt])
+}
+
+model ScheduledMessage {
+  id              String               @id @default(uuid())
+  workspaceId     String
+  channelId       String
+  authorId        String
+  threadId        String?
+  parentMessageId String?
+  content         String
+  sendAt          DateTime
+  status          ScheduledMessageStatus @default(PENDING)
+  sentMessageId   String?              @unique
+  metadata        Json?
+  errorMessage    String?
+  canceledAt      DateTime?
+  sentAt          DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  workspace       Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channel         Channel              @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  author          User                 @relation("ScheduledAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  thread          Thread?              @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  sentMessage     Message?             @relation("SentScheduledMessage", fields: [sentMessageId], references: [id], onDelete: SetNull)
+
+  @@index([status, sendAt])
+  @@index([workspaceId, status, sendAt])
+  @@index([authorId, status, sendAt])
+  @@index([channelId, status, sendAt])
 }
 
 model Notification {
@@ -355,6 +494,42 @@ model Integration {
 
   @@unique([workspaceId, name])
   @@index([workspaceId, type, isActive])
+}
+
+model WorkspaceInviteLink {
+  id            String        @id @default(uuid())
+  workspaceId   String
+  invitedById   String
+  code          String        @unique
+  invitedEmail  String?
+  role          WorkspaceRole @default(MEMBER)
+  maxUses       Int?
+  useCount      Int           @default(0)
+  expiresAt     DateTime
+  allowedDomain String?
+  isRevoked     Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy     User          @relation("InviteLinkCreator", fields: [invitedById], references: [id], onDelete: Restrict)
+  acceptances   WorkspaceInviteAcceptance[]
+
+  @@index([workspaceId, isRevoked, expiresAt])
+  @@index([workspaceId, createdAt])
+}
+
+model WorkspaceInviteAcceptance {
+  id           String              @id @default(uuid())
+  inviteLinkId String
+  workspaceId  String
+  userId       String
+  acceptedAt   DateTime            @default(now())
+  inviteLink   WorkspaceInviteLink @relation(fields: [inviteLinkId], references: [id], onDelete: Cascade)
+  workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user         User                @relation("InviteLinkAcceptor", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([inviteLinkId, userId])
+  @@index([workspaceId, acceptedAt])
 }
 
 model AuditLog {

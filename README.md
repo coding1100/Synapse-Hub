@@ -5,6 +5,7 @@ SynapseHub is a Slack-like, production-focused collaboration platform built as a
 ## Platform capabilities
 
 - Multi-workspace tenancy
+- Email verification and password reset flows
 - Public/private/direct channels
 - Direct messages and threaded replies
 - Realtime messaging over Socket.IO + Redis Pub/Sub
@@ -12,7 +13,8 @@ SynapseHub is a Slack-like, production-focused collaboration platform built as a
 - In-app notifications
 - Search service with Elasticsearch integration path
 - Bot API and slash command execution
-- Integrations for GitHub, webhooks, and custom events
+- Internal automation integrations via webhooks and custom events
+- Role-based invite links with expiry/domain/email constraints
 - Admin-facing web console
 - Docker, Kubernetes, Terraform, Prometheus/Grafana/ELK support
 
@@ -51,13 +53,19 @@ synapsehub/
 npm install
 ```
 
-2. Start the full local stack:
+2. Apply DB schema once (or whenever Prisma schema changes):
+
+```bash
+docker-compose up --build migrator
+```
+
+3. Start the full local stack:
 
 ```bash
 docker-compose up --build
 ```
 
-3. Open services:
+4. Open services:
 
 - Web app: `http://localhost:3000`
 - API gateway: `http://localhost:4000`
@@ -66,10 +74,20 @@ docker-compose up --build
 - Kibana: `http://localhost:5601`
 - MinIO Console: `http://localhost:9001`
 
-4. Seed initial data (optional, host environment):
+5. Seed initial data (optional, host environment):
 
 ```bash
 npm run prisma:seed --workspace @synapsehub/shared
+```
+
+## Troubleshooting
+
+- `P2021 The table public.User does not exist`
+
+```bash
+docker-compose down -v
+docker-compose up --build migrator
+docker-compose up --build
 ```
 
 ## Core scripts

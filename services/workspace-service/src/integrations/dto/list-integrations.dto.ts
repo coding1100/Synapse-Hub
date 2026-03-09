@@ -4,7 +4,7 @@ export class ListIntegrationsDto {
   @IsString()
   workspaceId!: string;
 
-  @IsIn(['GITHUB', 'WEBHOOK', 'CUSTOM'])
+  @IsIn(['WEBHOOK', 'CUSTOM'])
   @IsOptional()
-  type?: 'GITHUB' | 'WEBHOOK' | 'CUSTOM';
+  type?: 'WEBHOOK' | 'CUSTOM';
 }

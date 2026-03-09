@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { DeliveryStatus, PrismaClient } from '@prisma/client';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 import { EmitNotificationDto } from './dto/emit-notification.dto';
 
 @Injectable()
@@ -7,15 +7,14 @@ export class NotificationsService {
   private readonly prisma = new PrismaClient();
 
   async emit(dto: EmitNotificationDto) {
-    await this.prisma.user.upsert({
+    const user = await this.prisma.user.findUnique({
       where: { id: dto.userId },
-      create: {
-        id: dto.userId,
-        email: `${dto.userId}@synapsehub.local`,
-        displayName: `user-${dto.userId.slice(0, 6)}`,
-      },
-      update: {},
+      select: { id: true },
     });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
     const notification = await this.prisma.notification.create({
       data: {
@@ -25,14 +24,14 @@ export class NotificationsService {
         body: dto.message,
         entityId: dto.entityId,
         entityType: 'message',
-        deliveryStatus: DeliveryStatus.PENDING,
+        deliveryStatus: 'PENDING',
       },
     });
 
     await this.prisma.notification.update({
       where: { id: notification.id },
       data: {
-        deliveryStatus: DeliveryStatus.SENT,
+        deliveryStatus: 'SENT',
       },
     });
 
@@ -72,10 +71,14 @@ export class NotificationsService {
     };
   }
 
-  async markRead(notificationId: string) {
+  async markRead(notificationId: string, requesterId: string) {
     const notification = await this.prisma.notification.findUnique({ where: { id: notificationId } });
     if (!notification) {
       throw new NotFoundException('Notification not found');
+    }
+
+    if (notification.userId !== requesterId) {
+      throw new ForbiddenException('Cannot mark another user notification as read');
     }
 
     return this.prisma.notification.update({

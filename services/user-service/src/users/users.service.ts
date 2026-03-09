@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -8,14 +8,18 @@ export class UsersService {
   private readonly prisma = new PrismaClient();
 
   async getOrCreateUser(userId: string) {
-    return this.prisma.user.upsert({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      create: {
-        id: userId,
-        email: `${userId}@synapsehub.local`,
-        displayName: `user-${userId.slice(0, 6)}`,
-      },
-      update: {
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
         lastSeenAt: new Date(),
       },
     });
@@ -51,18 +55,33 @@ export class UsersService {
     });
   }
 
-  async search(q?: string, cursor?: string, limit = 20) {
+  async search(q?: string, cursor?: string, limit = 20, workspaceId?: string, requesterId?: string) {
     const normalizedLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 100)) : 20;
 
+    if (workspaceId && requesterId) {
+      await this.ensureWorkspaceMember(workspaceId, requesterId);
+    }
+
     const data = await this.prisma.user.findMany({
-      where: q
-        ? {
-            OR: [
-              { displayName: { contains: q, mode: 'insensitive' } },
-              { email: { contains: q, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
+      where: {
+        ...(q
+          ? {
+              OR: [
+                { displayName: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+        ...(workspaceId
+          ? {
+              workspaceMembers: {
+                some: {
+                  workspaceId,
+                },
+              },
+            }
+          : {}),
+      },
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       take: normalizedLimit,
       orderBy: { id: 'asc' },
@@ -75,5 +94,23 @@ export class UsersService {
         limit: normalizedLimit,
       },
     };
+  }
+
+  private async ensureWorkspaceMember(workspaceId: string, userId: string) {
+    const membership = await this.prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId,
+        },
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('User is not a member of this workspace');
+    }
   }
 }

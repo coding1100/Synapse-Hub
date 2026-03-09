@@ -16,28 +16,9 @@ export class MessagingClientService {
 
   async sendMessage(userId: string, payload: { channelId: string; content: string; fileIds?: string[]; threadId?: string }) {
     const response = await firstValueFrom(
-      this.httpService.post(`${this.baseUrl}/messages`, {
-        ...payload,
-        userId,
-      }),
-    );
-
-    return response.data;
-  }
-
-  async editMessage(messageId: string, payload: { content: string; editorUserId: string }) {
-    const response = await firstValueFrom(
-      this.httpService.patch(`${this.baseUrl}/messages/${messageId}`, payload),
-    );
-
-    return response.data;
-  }
-
-  async deleteMessage(messageId: string, deletedByUserId: string) {
-    const response = await firstValueFrom(
-      this.httpService.delete(`${this.baseUrl}/messages/${messageId}`, {
-        data: {
-          deletedByUserId,
+      this.httpService.post(`${this.baseUrl}/messages`, payload, {
+        headers: {
+          'x-user-id': userId,
         },
       }),
     );
@@ -45,23 +26,75 @@ export class MessagingClientService {
     return response.data;
   }
 
-  async reactToMessage(messageId: string, payload: { userId: string; emoji: string }) {
+  async assertChannelAccess(channelId: string, userId: string) {
+    await firstValueFrom(
+      this.httpService.get(`${this.baseUrl}/messages`, {
+        headers: {
+          'x-user-id': userId,
+        },
+        params: {
+          channelId,
+          limit: 1,
+        },
+      }),
+    );
+  }
+
+  async editMessage(messageId: string, userId: string, payload: { content: string }) {
     const response = await firstValueFrom(
-      this.httpService.post(`${this.baseUrl}/messages/${messageId}/reactions`, payload),
+      this.httpService.patch(`${this.baseUrl}/messages/${messageId}`, payload, {
+        headers: {
+          'x-user-id': userId,
+        },
+      }),
     );
 
     return response.data;
   }
 
-  async createThread(payload: { rootMessageId: string; channelId: string }) {
-    const response = await firstValueFrom(this.httpService.post(`${this.baseUrl}/threads`, payload));
+  async deleteMessage(messageId: string, userId: string) {
+    const response = await firstValueFrom(
+      this.httpService.delete(`${this.baseUrl}/messages/${messageId}`, {
+        headers: {
+          'x-user-id': userId,
+        },
+      }),
+    );
 
     return response.data;
   }
 
-  async replyToThread(threadId: string, payload: { userId: string; content: string }) {
+  async reactToMessage(messageId: string, userId: string, payload: { emoji: string }) {
     const response = await firstValueFrom(
-      this.httpService.post(`${this.baseUrl}/threads/${threadId}/replies`, payload),
+      this.httpService.post(`${this.baseUrl}/messages/${messageId}/reactions`, payload, {
+        headers: {
+          'x-user-id': userId,
+        },
+      }),
+    );
+
+    return response.data;
+  }
+
+  async createThread(userId: string, payload: { rootMessageId: string; channelId: string }) {
+    const response = await firstValueFrom(
+      this.httpService.post(`${this.baseUrl}/threads`, payload, {
+        headers: {
+          'x-user-id': userId,
+        },
+      }),
+    );
+
+    return response.data;
+  }
+
+  async replyToThread(threadId: string, userId: string, payload: { content: string }) {
+    const response = await firstValueFrom(
+      this.httpService.post(`${this.baseUrl}/threads/${threadId}/replies`, payload, {
+        headers: {
+          'x-user-id': userId,
+        },
+      }),
     );
 
     return response.data;

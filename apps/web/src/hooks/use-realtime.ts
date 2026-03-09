@@ -14,7 +14,13 @@ type SocketHandlers = {
 
 export function useRealtime(token?: string, handlers?: SocketHandlers) {
   const socketRef = useRef<Socket | null>(null);
+  const handlersRef = useRef<SocketHandlers | undefined>(handlers);
   const [connected, setConnected] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    handlersRef.current = handlers;
+  }, [handlers]);
 
   const wsUrl = useMemo(
     () => process.env.NEXT_PUBLIC_WS_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000',
@@ -23,6 +29,10 @@ export function useRealtime(token?: string, handlers?: SocketHandlers) {
 
   useEffect(() => {
     if (!token) {
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      setConnected(false);
+      setStatusMessage('Missing access token for realtime session.');
       return;
     }
 
@@ -31,28 +41,91 @@ export function useRealtime(token?: string, handlers?: SocketHandlers) {
         token,
       },
       transports: ['websocket'],
+      timeout: 10_000,
+      reconnection: true,
+      reconnectionAttempts: 8,
+      reconnectionDelay: 1_000,
+      reconnectionDelayMax: 8_000,
+      randomizationFactor: 0.5,
     });
 
     socketRef.current = socket;
 
-    socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
+    const handleConnect = () => {
+      setConnected(true);
+      setStatusMessage(null);
+    };
 
-    if (handlers?.onMessageCreated) socket.on('message:created', handlers.onMessageCreated);
-    if (handlers?.onMessageUpdated) socket.on('message:updated', handlers.onMessageUpdated);
-    if (handlers?.onMessageDeleted) socket.on('message:deleted', handlers.onMessageDeleted);
-    if (handlers?.onMessageReacted) socket.on('message:reacted', handlers.onMessageReacted);
-    if (handlers?.onThreadReply) socket.on('thread:reply', handlers.onThreadReply);
-    if (handlers?.onTypingUpdate) socket.on('typing:update', handlers.onTypingUpdate);
+    const handleDisconnect = (reason: Socket.DisconnectReason) => {
+      setConnected(false);
+      setStatusMessage(`Disconnected: ${reason}`);
+    };
+
+    const handleConnectError = (error: Error) => {
+      const message = error.message || 'Connection failed';
+      setConnected(false);
+      setStatusMessage(`Connection error: ${message}`);
+
+      const normalized = message.toLowerCase();
+      if (normalized.includes('unauthorized') || normalized.includes('token')) {
+        socket.io.opts.reconnection = false;
+      }
+    };
+
+    const handleReconnectAttempt = (attempt: number) => {
+      setStatusMessage(`Reconnecting... attempt ${attempt}`);
+    };
+
+    const handleReconnectFailed = () => {
+      setStatusMessage('Realtime unavailable after retries.');
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
+
+    socket.on('message:created', (payload) => {
+      handlersRef.current?.onMessageCreated?.(payload);
+    });
+    socket.on('message:updated', (payload) => {
+      handlersRef.current?.onMessageUpdated?.(payload);
+    });
+    socket.on('message:deleted', (payload) => {
+      handlersRef.current?.onMessageDeleted?.(payload);
+    });
+    socket.on('message:reacted', (payload) => {
+      handlersRef.current?.onMessageReacted?.(payload);
+    });
+    socket.on('thread:reply', (payload) => {
+      handlersRef.current?.onThreadReply?.(payload);
+    });
+    socket.on('typing:update', (payload) => {
+      handlersRef.current?.onTypingUpdate?.(payload);
+    });
+
+    socket.io.on('reconnect_attempt', handleReconnectAttempt);
+    socket.io.on('reconnect_failed', handleReconnectFailed);
 
     return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
+      socket.off('message:created');
+      socket.off('message:updated');
+      socket.off('message:deleted');
+      socket.off('message:reacted');
+      socket.off('thread:reply');
+      socket.off('typing:update');
+      socket.io.off('reconnect_attempt', handleReconnectAttempt);
+      socket.io.off('reconnect_failed', handleReconnectFailed);
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [handlers, token, wsUrl]);
+  }, [token, wsUrl]);
 
   return {
     socket: socketRef.current,
     connected,
+    statusMessage,
   };
 }

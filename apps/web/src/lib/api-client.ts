@@ -16,12 +16,9 @@ apiClient.interceptors.request.use((config) => {
   }
 
   try {
-    const parsed = JSON.parse(raw) as { accessToken?: string; user?: { id?: string } };
+    const parsed = JSON.parse(raw) as { accessToken?: string };
     if (parsed.accessToken) {
       config.headers.Authorization = `Bearer ${parsed.accessToken}`;
-    }
-    if (parsed.user?.id) {
-      config.headers['x-user-id'] = parsed.user.id;
     }
   } catch {
     // Ignore malformed local data.
@@ -29,3 +26,21 @@ apiClient.interceptors.request.use((config) => {
 
   return config;
 });
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (typeof window !== 'undefined' && error?.response?.status === 401) {
+      window.localStorage.removeItem('synapsehub.auth');
+      window.localStorage.removeItem('synapsehub.workspaceId');
+
+      const path = window.location.pathname;
+      const isAuthRoute = path.startsWith('/login') || path.startsWith('/register');
+      if (!isAuthRoute) {
+        window.location.href = '/login';
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);

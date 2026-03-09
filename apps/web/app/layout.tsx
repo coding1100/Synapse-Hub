@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import { Space_Grotesk, IBM_Plex_Sans } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
 import { QueryProvider } from '@/providers/query-provider';
 import { AuthProvider } from '@/providers/auth-provider';
+import { WorkspaceProvider } from '@/providers/workspace-provider';
 
 const display = Space_Grotesk({
   subsets: ['latin'],
@@ -26,7 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body>
         <QueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <WorkspaceProvider>
+              {children}
+              <Toaster position="top-right" richColors closeButton />
+            </WorkspaceProvider>
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>

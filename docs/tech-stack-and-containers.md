@@ -4,154 +4,203 @@
 
 This document explains:
 
-- What technology stack SynapseHub uses
-- Why each technology was selected
-- Core technical behavior of the application
-- The purpose and use case of every Docker container
+- Which technologies SynapseHub uses.
+- Why each technology was selected.
+- How the system is structured technically.
+- The exact purpose of every local Docker container.
 
-## Application Technical Model
+## System Model
 
-SynapseHub is a web-only, Slack-like collaboration system designed around:
+SynapseHub is a web-only collaboration platform with:
 
-- Workspace-based multi-tenancy
-- Channel and thread communication
-- Realtime event delivery
-- Microservice isolation by domain
-- Event fan-out using Redis Pub/Sub
-- Central gateway for client traffic
-- Relational persistence in PostgreSQL
-- Search expansion path via Elasticsearch
-- Observability via metrics and logs
+- Multi-tenant workspaces.
+- Workspace members, roles, and channel access control.
+- Realtime messaging via WebSockets.
+- REST APIs for CRUD workflows.
+- Cross-service fan-out through Redis Pub/Sub.
+- PostgreSQL as source-of-truth storage.
+- Search through a dedicated search service.
 
-## Technology Stack and Why
+## Tech Stack: What and Why
 
-### Frontend
+### Frontend (`apps/web`)
 
-- Next.js (App Router): server/client rendering flexibility, production-grade web routing, optimization, and deployment maturity.
-- React + TypeScript: componentized UI architecture with strict type safety for large codebases.
-- TailwindCSS: fast, consistent design system implementation and maintainable utility-based styling.
-- React Query: API state caching, background refetch, optimistic UX, and reduced request duplication.
+- `Next.js` (App Router): production web routing, server/client rendering support, optimized bundles.
+- `React + TypeScript`: strict component contracts, maintainable UI code.
+- `TailwindCSS`: fast and consistent design implementation.
+- `React Query`: request caching, refetch control, and mutation state handling.
 
-### Backend
+### API Edge (`apps/api`)
 
-- Node.js + NestJS + TypeScript: modular architecture, DI patterns, predictable service boundaries, and scalable team maintenance.
-- Prisma ORM: strongly typed DB access, schema-driven migrations, and safer query development.
-- JWT + refresh tokens + bcrypt: stateless auth with secure password hashing and renewable session flow.
+- `NestJS` API gateway: single entry point for browser calls.
+- `http-proxy-middleware`: routes REST traffic to domain services.
+- `Socket.IO gateway`: receives realtime events from web clients.
+- `Redis Pub/Sub`: broadcasts realtime events across instances.
 
-### Realtime Layer
+### Domain Services (`services/*`)
 
-- Socket.IO: robust WebSocket abstraction with reconnect behavior and room semantics.
-- Redis Pub/Sub: cross-instance broadcast so realtime messages scale horizontally beyond one API node.
+- `auth-service`: registration, login, token refresh/logout.
+- `user-service`: user profile lookup/update and scoped user search.
+- `workspace-service`: workspaces, members/roles, bots, integrations.
+- `channel-service`: channel lifecycle and membership.
+- `messaging-service`: messages, edits/deletes, reactions, threads.
+- `notification-service`: notification records and read state.
+- `file-service`: file metadata and S3 object references.
+- `search-service`: workspace-scoped search over users/channels/messages/files.
 
-### Data Layer
+### Data and Infra
 
-- PostgreSQL: transactional consistency, relational modeling, indexing, and strong query capabilities.
-- Elasticsearch: dedicated full-text search backend for messages, files, users, and channels.
-- S3-compatible object storage (MinIO locally / S3 in cloud): scalable binary file storage separate from relational metadata.
+- `PostgreSQL`: relational data, strong consistency, indexed joins.
+- `Redis`: low-latency Pub/Sub for realtime fanout.
+- `Elasticsearch`: optional advanced full-text search backend.
+- `MinIO` (S3-compatible): object storage in local/dev.
+- `Prisma ORM`: typed DB schema/client and migrations.
+- `Docker + Compose`: reproducible local stack.
+- `Kubernetes + Terraform`: production deployment and infra-as-code path.
+- `Prometheus + Grafana + ELK`: metrics dashboards and centralized logs.
 
-### Infrastructure and Ops
+## Monorepo Structure
 
-- Docker + Docker Compose: reproducible local and CI environments.
-- Kubernetes: orchestrated production deployment and horizontal scaling.
-- Terraform: infrastructure as code for versioned cloud provisioning.
-- GitHub Actions: automated test/build/publish/deploy pipeline.
-- Prometheus + Grafana + ELK: metrics, dashboards, and centralized logging.
+```text
+synapsehub/
+  apps/
+    api/
+    web/
+  services/
+    auth-service/
+    user-service/
+    workspace-service/
+    channel-service/
+    messaging-service/
+    notification-service/
+    file-service/
+    search-service/
+  packages/
+    ui/
+    shared/
+  infrastructure/
+    docker/
+    kubernetes/
+    terraform/
+  scripts/
+  docs/
+```
 
-## Service Map (Logical)
+## Container Reference (docker-compose)
 
-- `apps/api`: gateway + websocket edge
-- `services/auth-service`: authentication and token lifecycle
-- `services/user-service`: user profile and lookup
-- `services/workspace-service`: workspace domain, roles, bots, integrations
-- `services/channel-service`: channel CRUD/membership
-- `services/messaging-service`: messages, threads, reactions
-- `services/notification-service`: notification persistence/delivery state
-- `services/file-service`: file metadata, S3 object references
-- `services/search-service`: index + query operations
-- `apps/web`: browser application
-
-## Container-by-Container Purpose (docker-compose)
-
-### Data and Platform Containers
+### Core data plane
 
 - `postgres`
-  - Use case: source-of-truth relational datastore (users, messages, channels, memberships, audit logs, etc.).
+  - Port: `5432`
+  - Stores: users, workspaces, channels, messages, reactions, files metadata, audit logs.
+  - Criticality: hard dependency for all domain services.
 
 - `redis`
-  - Use case: low-latency pub/sub backbone for realtime fan-out across websocket instances; queue/cache expansion point.
+  - Port: `6379`
+  - Use case: realtime event propagation and queue/cache extension point.
+  - Criticality: required for multi-instance realtime consistency.
 
 - `elasticsearch`
-  - Use case: full-text indexing/query engine for application-wide search.
+  - Port: `9200`
+  - Use case: advanced text indexing/search and ELK storage.
+  - Notes: local stack runs with security disabled.
 
 - `minio`
-  - Use case: S3-compatible object store for uploaded files in local/dev environments.
+  - Ports: `9000` (S3 API), `9001` (console)
+  - Use case: local object storage backend for file uploads.
 
-### ELK Observability Containers
+### Observability
 
 - `logstash`
-  - Use case: log ingestion and routing pipeline into Elasticsearch.
+  - Port: `5044`
+  - Use case: pipeline for ingesting and transforming logs into Elasticsearch.
 
 - `kibana`
-  - Use case: log exploration and operational troubleshooting UI.
-
-### Metrics Observability Containers
+  - Port: `5601`
+  - Use case: log discovery, debugging, operational investigations.
 
 - `prometheus`
-  - Use case: scrape service `/metrics` endpoints and store time-series metrics.
+  - Port: `9090`
+  - Use case: scrape `/metrics` endpoints and store timeseries.
 
 - `grafana`
-  - Use case: visualization/dashboarding and alerting over Prometheus metrics.
+  - Port: `3001` (mapped to container `3000`)
+  - Use case: dashboards and alerting over Prometheus data.
 
-### Migration and App Containers
+### Platform control and apps
 
 - `migrator`
-  - Use case: applies Prisma migrations before app services boot, preventing schema drift runtime failures.
+  - Runs Prisma migration/deploy/push before app services start.
+  - Use case: prevents runtime schema mismatch (`P2021` table-not-found errors).
 
 - `api-gateway`
-  - Use case: single ingress for web client REST + websocket traffic; routes requests to internal services.
+  - Port: `4000`
+  - Use case: browser ingress for REST + websocket APIs.
 
-- `auth-service`
-  - Use case: user registration/login/refresh/logout/OAuth callbacks.
+- `auth-service` (`4001`)
+  - Use case: JWT auth lifecycle and refresh token rotation.
 
-- `user-service`
-  - Use case: user profile retrieval/update and search.
+- `user-service` (`4002`)
+  - Use case: user read/update/search operations.
 
-- `workspace-service`
-  - Use case: workspace management, member roles, bot APIs, integration event handling.
+- `workspace-service` (`4003`)
+  - Use case: workspace/member/role/bot/webhook-custom integration domain logic.
 
-- `channel-service`
-  - Use case: channel create/list/join/leave/archive.
+- `channel-service` (`4004`)
+  - Use case: workspace channel management and membership.
 
-- `messaging-service`
-  - Use case: message CRUD, reactions, thread creation/replies, ordering sequence management.
+- `messaging-service` (`4005`)
+  - Use case: message lifecycle, threading, reactions.
 
-- `notification-service`
-  - Use case: notification creation, read-state tracking, inbox retrieval.
+- `notification-service` (`4006`)
+  - Use case: notification inbox and read state.
 
-- `file-service`
-  - Use case: file metadata and object URL handling for uploads/downloads/deletes.
+- `file-service` (`4007`)
+  - Use case: file metadata and S3 URL references.
 
-- `search-service`
-  - Use case: indexing endpoints and multi-entity search query execution.
+- `search-service` (`4008`)
+  - Use case: workspace-scoped search API.
 
 - `web`
-  - Use case: Next.js user interface served on port 3000.
+  - Port: `3000`
+  - Use case: Next.js web client.
 
-## Typical Runtime Flow
+## Dependency Graph (runtime)
 
-1. Browser calls `api-gateway` (`/auth`, `/messages`, `/channels`, etc.).
-2. Gateway proxies to the target domain service.
-3. Service persists/reads data via PostgreSQL.
-4. Realtime actions publish events through Redis and websocket rooms.
-5. Search-relevant data is indexed in Elasticsearch.
-6. Metrics are scraped by Prometheus; logs are searchable in Kibana.
+1. Browser calls `web` and `api-gateway`.
+2. `api-gateway` proxies to domain services.
+3. Domain services use `postgres` for persistence.
+4. Realtime events fan out through `redis` and websocket rooms.
+5. Logs and metrics flow to ELK/Prometheus/Grafana.
 
-## Notes About Registration Errors
+## Common Operational Issue
 
-If registration fails on `/register`, common causes are:
+### Error: `The table public.User does not exist (P2021)`
 
-- Email already exists in PostgreSQL (`Email already exists`).
-- Target auth service unreachable or proxy misconfiguration.
-- Validation failure (invalid email, weak password under DTO rules).
+Cause:
 
-The register page now surfaces backend error text directly to make the failure reason explicit.
+- Database schema was not applied, or app services started before migration completed.
+
+Resolution:
+
+1. Ensure `migrator` finishes successfully before service startup.
+2. Re-run migration job if needed:
+
+```bash
+npm run prisma:deploy --workspace @synapsehub/shared
+npm run prisma:push --workspace @synapsehub/shared
+```
+
+3. If schema history is corrupted in local dev, recreate DB volume and restart:
+
+```bash
+docker-compose down -v
+docker-compose up --build
+```
+
+## Current Scope Exclusions
+
+- Microsoft Purview eDiscovery
+- Product connectors for GitHub/Jira/ServiceNow/PagerDuty
+- External identity providers (Google/GitHub OAuth, SSO IdPs, SCIM provisioning)
+- Stripe billing/customer portal integrations

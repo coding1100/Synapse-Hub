@@ -5,10 +5,11 @@ export class CreateIntegrationDto {
   workspaceId!: string;
 
   @IsString()
-  createdById!: string;
+  @IsOptional()
+  createdById?: string;
 
-  @IsIn(['GITHUB', 'WEBHOOK', 'CUSTOM'])
-  type!: 'GITHUB' | 'WEBHOOK' | 'CUSTOM';
+  @IsIn(['WEBHOOK', 'CUSTOM'])
+  type!: 'WEBHOOK' | 'CUSTOM';
 
   @IsString()
   @MaxLength(60)

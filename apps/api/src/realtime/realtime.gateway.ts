@@ -18,7 +18,10 @@ import { RedisPubSubService } from './redis-pubsub.service';
 @WebSocketGateway({
   namespace: '/ws',
   cors: {
-    origin: '*',
+    origin: (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
     credentials: true,
   },
 })
@@ -42,14 +45,16 @@ export class RealtimeGateway
   }
 
   handleConnection(client: Socket) {
+    const ipAddress = this.getClientAddress(client);
     const token = this.extractAccessToken(client);
     if (!token) {
-      client.disconnect();
+      this.logger.warn(`Socket rejected (missing token) client=${client.id} ip=${ipAddress}`);
+      client.disconnect(true);
       return;
     }
 
     try {
-      const payload = verify(token, process.env.JWT_ACCESS_SECRET ?? 'access-secret') as {
+      const payload = verify(token, process.env.JWT_ACCESS_SECRET ?? 'change-me-access') as {
         sub?: string;
       };
 
@@ -58,14 +63,28 @@ export class RealtimeGateway
       }
 
       client.data.userId = payload.sub;
+      client.data.ipAddress = ipAddress;
+      client.on('disconnecting', (reason) => {
+        client.data.disconnectReason = reason;
+      });
+      client.on('error', (error: Error) => {
+        this.logger.warn(
+          `Socket error client=${client.id} user=${payload.sub} reason=${error.message}`,
+        );
+      });
+
       client.join(`user:${payload.sub}`);
+      this.logger.debug(`Client connected ${client.id} user=${payload.sub} ip=${ipAddress}`);
     } catch {
-      client.disconnect();
+      this.logger.warn(`Socket rejected (invalid token) client=${client.id} ip=${ipAddress}`);
+      client.disconnect(true);
     }
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.debug(`Client disconnected ${client.id}`);
+    const userId = (client.data.userId as string | undefined) ?? 'anonymous';
+    const reason = (client.data.disconnectReason as string | undefined) ?? 'unknown';
+    this.logger.debug(`Client disconnected ${client.id} user=${userId} reason=${reason}`);
   }
 
   @SubscribeMessage('channel:join')
@@ -73,6 +92,11 @@ export class RealtimeGateway
     @MessageBody() payload: { channelId: string },
     @ConnectedSocket() client: Socket,
   ) {
+    this.ensurePayload(payload.channelId, 'channelId is required');
+
+    const userId = this.getUserId(client);
+    await this.assertChannelAccess(payload.channelId, userId);
+
     client.join(`channel:${payload.channelId}`);
     return { joined: true, channelId: payload.channelId };
   }
@@ -82,6 +106,8 @@ export class RealtimeGateway
     @MessageBody() payload: { channelId: string },
     @ConnectedSocket() client: Socket,
   ) {
+    this.ensurePayload(payload.channelId, 'channelId is required');
+
     client.leave(`channel:${payload.channelId}`);
     return { joined: false, channelId: payload.channelId };
   }
@@ -113,9 +139,8 @@ export class RealtimeGateway
     this.ensurePayload(payload.messageId && payload.content, 'messageId and content are required');
 
     const userId = this.getUserId(client);
-    const message = await this.messagingClient.editMessage(payload.messageId, {
+    const message = await this.messagingClient.editMessage(payload.messageId, userId, {
       content: payload.content,
-      editorUserId: userId,
     });
 
     await this.redisPubSub.publish({
@@ -154,8 +179,7 @@ export class RealtimeGateway
     this.ensurePayload(payload.messageId && payload.emoji && payload.channelId, 'messageId, channelId and emoji are required');
 
     const userId = this.getUserId(client);
-    const reaction = await this.messagingClient.reactToMessage(payload.messageId, {
-      userId,
+    const reaction = await this.messagingClient.reactToMessage(payload.messageId, userId, {
       emoji: payload.emoji,
     });
 
@@ -173,10 +197,14 @@ export class RealtimeGateway
   }
 
   @SubscribeMessage('thread:create')
-  async createThread(@MessageBody() payload: { rootMessageId: string; channelId: string }) {
+  async createThread(
+    @MessageBody() payload: { rootMessageId: string; channelId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
     this.ensurePayload(payload.rootMessageId && payload.channelId, 'rootMessageId and channelId are required');
 
-    const thread = await this.messagingClient.createThread(payload);
+    const userId = this.getUserId(client);
+    const thread = await this.messagingClient.createThread(userId, payload);
 
     await this.redisPubSub.publish({
       room: `channel:${payload.channelId}`,
@@ -195,8 +223,7 @@ export class RealtimeGateway
     this.ensurePayload(payload.threadId && payload.content, 'threadId and content are required');
 
     const userId = this.getUserId(client);
-    const reply = await this.messagingClient.replyToThread(payload.threadId, {
-      userId,
+    const reply = await this.messagingClient.replyToThread(payload.threadId, userId, {
       content: payload.content,
     });
 
@@ -217,6 +244,8 @@ export class RealtimeGateway
     this.ensurePayload(payload.channelId, 'channelId is required');
 
     const userId = this.getUserId(client);
+    await this.assertChannelAccess(payload.channelId, userId);
+
     const typingEvent = {
       channelId: payload.channelId,
       userId,
@@ -259,5 +288,22 @@ export class RealtimeGateway
     }
 
     return undefined;
+  }
+
+  private async assertChannelAccess(channelId: string, userId: string) {
+    try {
+      await this.messagingClient.assertChannelAccess(channelId, userId);
+    } catch {
+      throw new WsException('Forbidden channel access');
+    }
+  }
+
+  private getClientAddress(client: Socket) {
+    const forwarded = client.handshake.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.length > 0) {
+      return forwarded.split(',')[0].trim();
+    }
+
+    return client.handshake.address;
   }
 }

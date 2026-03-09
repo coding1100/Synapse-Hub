@@ -29,7 +29,7 @@ SynapseHub uses a microservices architecture with API gateway aggregation.
 ### Integration and bot flow
 
 1. Admin creates bot/integration in `workspace-service`.
-2. External systems post events to integration endpoints.
+2. Internal or approved custom systems post events to webhook/custom integration endpoints.
 3. Integration events are captured into `AuditLog` and optionally forwarded to bot workflows.
 4. Bots can execute slash commands and emit bot-authored messages.
 
@@ -37,7 +37,7 @@ SynapseHub uses a microservices architecture with API gateway aggregation.
 
 Prisma schema includes:
 
-- Users, OAuth accounts, refresh tokens
+- Users and refresh tokens (`OAuthAccount` is schema-reserved but not exposed)
 - Workspaces and memberships
 - Channels and channel memberships
 - Messages, threads, reactions
@@ -45,6 +45,13 @@ Prisma schema includes:
 - Bots, bot events
 - Integrations
 - Audit logs
+
+## Scope exclusions (current release)
+
+- No Microsoft Purview eDiscovery integration
+- No GitHub/Jira/ServiceNow/PagerDuty product connectors
+- No Google/GitHub OAuth, no enterprise SSO/SCIM
+- No Stripe billing/customer portal integration
 
 Indexing strategy supports:
 

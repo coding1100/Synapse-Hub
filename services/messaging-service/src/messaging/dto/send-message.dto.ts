@@ -1,11 +1,8 @@
-﻿import { IsArray, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class SendMessageDto {
   @IsString()
   channelId!: string;
-
-  @IsString()
-  userId!: string;
 
   @IsString()
   @MaxLength(4000)

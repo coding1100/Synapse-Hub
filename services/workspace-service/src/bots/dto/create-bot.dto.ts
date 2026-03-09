@@ -5,7 +5,8 @@ export class CreateBotDto {
   workspaceId!: string;
 
   @IsString()
-  createdById!: string;
+  @IsOptional()
+  createdById?: string;
 
   @IsString()
   @MaxLength(60)
