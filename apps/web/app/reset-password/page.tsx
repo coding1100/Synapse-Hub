@@ -64,7 +64,7 @@ export default function ResetPasswordPage() {
     >
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-700">New password</label>
+          <label className="mb-1 block text-sm font-semibold text-app-ink">New password</label>
           <Input
             type="password"
             required
@@ -74,7 +74,7 @@ export default function ResetPasswordPage() {
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-700">Confirm password</label>
+          <label className="mb-1 block text-sm font-semibold text-app-ink">Confirm password</label>
           <Input
             type="password"
             required
@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
           </p>
         )}
         {!token && (
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-app-muted">
             Reset link is invalid. Request a new link from{' '}
             <Link href="/forgot-password" className="font-semibold text-blue-700 hover:underline">
               forgot password

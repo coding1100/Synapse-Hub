@@ -18,7 +18,7 @@ export function MentionSuggestionsDropdown({
   }
 
   return (
-    <div className="absolute -top-2 z-20 max-h-56 w-full -translate-y-full overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-panel">
+    <div className="app-panel absolute -top-2 z-20 max-h-56 w-full -translate-y-full overflow-y-auto shadow-[0_16px_34px_rgba(2,8,23,0.28)]">
       {suggestions.map((suggestion, index) => (
         <button
           key={suggestion.id}
@@ -27,17 +27,17 @@ export function MentionSuggestionsDropdown({
           onClick={() => onSelect(index)}
           className={clsx(
             'flex w-full items-center gap-2 px-3 py-2 text-left transition',
-            index === activeIndex ? 'bg-blue-50' : 'bg-white hover:bg-slate-50',
+            index === activeIndex ? 'bg-indigo-50 dark:bg-indigo-500/20' : 'bg-app-panel hover:bg-app-hover',
           )}
         >
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-app-soft text-app-muted">
             <UserRound size={14} />
           </span>
           <span className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-800">{suggestion.displayName}</p>
-            <p className="truncate text-xs text-slate-500">{suggestion.email}</p>
+            <p className="truncate text-sm font-semibold text-app-ink">{suggestion.displayName}</p>
+            <p className="truncate text-xs text-app-muted">{suggestion.email}</p>
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
+          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">
             <AtSign size={11} />
             {suggestion.handle}
           </span>

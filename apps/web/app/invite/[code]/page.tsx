@@ -68,7 +68,7 @@ export default function InviteAcceptPage() {
       footerLinkLabel="Dashboard"
     >
       <div className="mt-6 space-y-4">
-        <p className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+        <p className="inline-flex items-center gap-2 rounded-full border border-app-line bg-app-soft px-3 py-1 text-xs font-semibold text-app-ink">
           <Link2 size={13} />
           Invite code: {inviteCode}
         </p>

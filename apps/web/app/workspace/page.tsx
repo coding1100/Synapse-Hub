@@ -191,27 +191,27 @@ export default function WorkspacePage() {
 
   return (
     <AppShell title="Workspace">
-      <section className="mb-4 border-b border-slate-200 bg-white px-3 py-3 sm:px-4 sm:py-4">
+      <section className="app-panel mb-4 px-3 py-3 sm:px-4 sm:py-4">
         <p className="app-kicker">Workspace administration</p>
-        <h2 className="mt-1 text-3xl font-bold text-ink">Manage teams, members, and role access</h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <h2 className="mt-1 text-3xl font-bold text-app-ink">Manage teams, members, and role access</h2>
+        <p className="mt-2 text-sm text-app-muted">
           Workspace owners and admins can invite members, assign roles, and keep team boundaries clean.
         </p>
       </section>
 
-      <section className="overflow-hidden border-y border-slate-200 bg-white">
-        <div className="grid divide-y divide-slate-200 xl:grid-cols-[1.2fr_1fr] xl:divide-x xl:divide-y-0">
+      <section className="app-panel overflow-hidden">
+        <div className="grid divide-y divide-app-line xl:grid-cols-[1.2fr_1fr] xl:divide-x xl:divide-y-0">
           <div className="p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-ink">
-                <Building2 size={20} className="text-blue-600" />
+              <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-app-ink">
+                <Building2 size={20} className="text-indigo-600 dark:text-indigo-300" />
                 Existing workspaces
               </h2>
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+              <span className="rounded-full border border-app-line bg-app-soft px-2.5 py-1 text-xs font-semibold text-app-muted">
                 {data?.data.length ?? 0}
               </span>
             </div>
-            <div className="mt-4 border-t border-slate-200">
+            <div className="mt-4 border-t border-app-line">
               {data?.data.map((workspace) => {
                 const isSelected = workspace.id === selectedWorkspaceId;
                 return (
@@ -219,25 +219,27 @@ export default function WorkspacePage() {
                     key={workspace.id}
                     type="button"
                     onClick={() => setSelectedWorkspaceId(workspace.id)}
-                    className={`block w-full border-b border-slate-200 px-3 py-2.5 text-left transition last:border-b-0 ${
-                      isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'
+                    className={`block w-full border-b border-app-line px-3 py-2.5 text-left transition last:border-b-0 ${
+                      isSelected
+                        ? 'bg-indigo-50 dark:bg-indigo-500/20'
+                        : 'hover:bg-app-hover'
                     }`}
                   >
-                    <p className="font-semibold text-slate-800">{workspace.name}</p>
-                    <p className="text-xs text-slate-500">{workspace.slug}</p>
+                    <p className="font-semibold text-app-ink">{workspace.name}</p>
+                    <p className="text-xs text-app-muted">{workspace.slug}</p>
                   </button>
                 );
               })}
               {(!data?.data || data.data.length === 0) && (
-                <p className="px-3 py-3 text-sm text-slate-500">No workspaces available.</p>
+                <p className="px-3 py-3 text-sm text-app-muted">No workspaces available.</p>
               )}
             </div>
           </div>
 
-          <div className="divide-y divide-slate-200">
+          <div className="divide-y divide-app-line">
             <div className="p-4 sm:p-5">
-              <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-ink">
-                <ShieldCheck size={20} className="text-blue-600" />
+              <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-app-ink">
+                <ShieldCheck size={20} className="text-indigo-600 dark:text-indigo-300" />
                 Create workspace
               </h2>
               <form onSubmit={onSubmitCreate} className="mt-4 space-y-3">
@@ -259,16 +261,16 @@ export default function WorkspacePage() {
             </div>
 
             <div className="p-4 sm:p-5">
-              <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-ink">
-                <UsersRound size={20} className="text-blue-600" />
+              <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-app-ink">
+                <UsersRound size={20} className="text-indigo-600 dark:text-indigo-300" />
                 Members
               </h2>
               {!selectedWorkspaceId && (
-                <p className="mt-3 text-sm text-slate-500">Select a workspace to manage members.</p>
+                <p className="mt-3 text-sm text-app-muted">Select a workspace to manage members.</p>
               )}
 
               {selectedWorkspaceId && membersLoading && (
-                <p className="mt-3 text-sm text-slate-500">Loading members...</p>
+                <p className="mt-3 text-sm text-app-muted">Loading members...</p>
               )}
 
               {selectedWorkspaceId && !membersLoading && !membersData && (
@@ -310,23 +312,23 @@ export default function WorkspacePage() {
                   )}
 
                   {!canInvite && currentMembership && (
-                    <p className="mt-3 text-sm text-slate-500">
+                    <p className="mt-3 text-sm text-app-muted">
                       Your role is {currentMembership.role}. Only OWNER or ADMIN can invite members.
                     </p>
                   )}
 
-                  <div className="mt-4 border-t border-slate-200">
+                  <div className="mt-4 border-t border-app-line">
                     {members.map((member) => (
-                      <div key={member.id} className="border-b border-slate-200 px-2 py-2.5 last:border-b-0">
-                        <p className="text-sm font-semibold text-slate-800">{member.user.displayName}</p>
-                        <p className="text-xs text-slate-500">{member.user.email}</p>
-                        <p className="mt-1 inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold uppercase text-blue-700">
+                      <div key={member.id} className="border-b border-app-line px-2 py-2.5 last:border-b-0">
+                        <p className="text-sm font-semibold text-app-ink">{member.user.displayName}</p>
+                        <p className="text-xs text-app-muted">{member.user.email}</p>
+                        <p className="mt-1 inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold uppercase text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">
                           {member.role}
                         </p>
                       </div>
                     ))}
                     {members.length === 0 && (
-                      <p className="px-2 py-3 text-sm text-slate-500">No members found for this workspace.</p>
+                      <p className="px-2 py-3 text-sm text-app-muted">No members found for this workspace.</p>
                     )}
                   </div>
                 </>
@@ -334,12 +336,12 @@ export default function WorkspacePage() {
             </div>
 
             <div className="p-4 sm:p-5">
-              <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-ink">
-                <Link2 size={20} className="text-blue-600" />
+              <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-app-ink">
+                <Link2 size={20} className="text-indigo-600 dark:text-indigo-300" />
                 Invite links
               </h2>
               {!selectedWorkspaceId && (
-                <p className="mt-3 text-sm text-slate-500">Select a workspace to manage invite links.</p>
+                <p className="mt-3 text-sm text-app-muted">Select a workspace to manage invite links.</p>
               )}
 
               {selectedWorkspaceId && canInvite && (
@@ -388,30 +390,30 @@ export default function WorkspacePage() {
               )}
 
               {selectedWorkspaceId && !canInvite && currentMembership && (
-                <p className="mt-3 text-sm text-slate-500">
+                <p className="mt-3 text-sm text-app-muted">
                   Your role is {currentMembership.role}. Only OWNER or ADMIN can manage invite links.
                 </p>
               )}
 
               {selectedWorkspaceId && inviteLinksLoading && (
-                <p className="mt-3 text-sm text-slate-500">Loading invite links...</p>
+                <p className="mt-3 text-sm text-app-muted">Loading invite links...</p>
               )}
 
               {selectedWorkspaceId && !inviteLinksLoading && (
-                <div className="mt-4 border-t border-slate-200">
+                <div className="mt-4 border-t border-app-line">
                   {inviteLinks.map((link) => (
-                    <div key={link.id} className="border-b border-slate-200 px-2 py-2.5 last:border-b-0">
-                      <p className="text-sm font-semibold text-slate-800">
+                    <div key={link.id} className="border-b border-app-line px-2 py-2.5 last:border-b-0">
+                      <p className="text-sm font-semibold text-app-ink">
                         {link.role} link {link.isRevoked ? '(revoked)' : ''}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-app-muted">
                         Uses: {link.useCount}/{link.maxUses ?? 'unlimited'} | Expires: {new Date(link.expiresAt).toLocaleString()}
                       </p>
                       {link.allowedDomain && (
-                        <p className="text-xs text-slate-500">Domain: {link.allowedDomain}</p>
+                        <p className="text-xs text-app-muted">Domain: {link.allowedDomain}</p>
                       )}
                       {link.invitedEmail && (
-                        <p className="text-xs text-slate-500">Email lock: {link.invitedEmail}</p>
+                        <p className="text-xs text-app-muted">Email lock: {link.invitedEmail}</p>
                       )}
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Button
@@ -437,7 +439,7 @@ export default function WorkspacePage() {
                     </div>
                   ))}
                   {inviteLinks.length === 0 && (
-                    <p className="px-2 py-3 text-sm text-slate-500">No invite links created.</p>
+                    <p className="px-2 py-3 text-sm text-app-muted">No invite links created.</p>
                   )}
                 </div>
               )}

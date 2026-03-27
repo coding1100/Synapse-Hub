@@ -119,8 +119,8 @@ export function ThreadPanel({
   return (
     <aside className="flex h-full min-h-0 flex-col bg-transparent p-3 sm:p-4">
       <div className="mb-3">
-        <h3 className="inline-flex items-center gap-2 text-xl font-bold text-ink sm:text-2xl">
-          <MessageCircleReply size={20} className="text-blue-600" />
+        <h3 className="inline-flex items-center gap-2 text-xl font-bold text-app-ink sm:text-2xl">
+          <MessageCircleReply size={20} className="text-indigo-600 dark:text-indigo-300" />
           Thread
         </h3>
         <p className="app-kicker mt-1">
@@ -129,7 +129,7 @@ export function ThreadPanel({
       </div>
 
       {!rootMessage && (
-        <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
+        <div className="rounded-lg border border-app-line bg-app-soft p-4 text-sm text-app-muted">
           Select a message in the channel timeline to open its thread.
         </div>
       )}
@@ -146,7 +146,7 @@ export function ThreadPanel({
               className={`text-xs font-semibold ${
                 feedback.toLowerCase().includes('failed') || feedback.toLowerCase().includes('unable')
                   ? 'text-red-600'
-                  : 'text-emerald-700'
+                  : 'text-emerald-700 dark:text-emerald-300'
               }`}
             >
               {feedback}
@@ -154,16 +154,16 @@ export function ThreadPanel({
           )}
 
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-            {isLoading && <p className="text-xs text-slate-500">Loading thread...</p>}
+            {isLoading && <p className="text-xs text-app-muted">Loading thread...</p>}
             {!isLoading &&
               replies.map((reply) => <MessageCard key={reply.id} message={reply} currentUserId={user?.id} compact />)}
             {!isLoading && replies.length === 0 && (
-              <p className="text-xs text-slate-500">No replies yet. Be the first to reply.</p>
+              <p className="text-xs text-app-muted">No replies yet. Be the first to reply.</p>
             )}
           </div>
 
           {onReply && (
-            <form onSubmit={onSubmit} className="space-y-2 border-t border-slate-200 pt-3">
+            <form onSubmit={onSubmit} className="space-y-2 border-t border-app-line pt-3">
               <div className="relative">
                 {showSuggestions && (
                   <MentionSuggestionsDropdown suggestions={suggestions} activeIndex={activeIndex} onSelect={applyMention} />
@@ -181,7 +181,7 @@ export function ThreadPanel({
                   onKeyDown={onComposerKeyDown}
                   rows={3}
                   placeholder="Reply in thread"
-                  className="w-full resize-none rounded-xl border border-slate-300 bg-white p-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:p-3"
+                  className="w-full resize-none rounded-xl border border-app-line bg-app-soft p-2.5 text-sm text-app-ink outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/45 sm:p-3"
                 />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">

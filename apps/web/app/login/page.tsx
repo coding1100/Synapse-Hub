@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
-import { LogIn } from 'lucide-react';
+import { Chrome, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { AuthShell } from '@/components/auth-shell';
 import { resolveApiError } from '@/lib/http-error';
@@ -54,21 +54,40 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Login"
-      subtitle="Sign in to your SynapseHub workspace."
-      footerLabel="No account?"
+      title="Welcome back"
+      subtitle="Enter your credentials to access your workspace."
+      footerLabel="New to SynapseHub?"
       footerHref="/register"
-      footerLinkLabel="Register"
+      footerLinkLabel="Create an account"
     >
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <button
+          type="button"
+          onClick={() => toast.info('Google OAuth can be connected from environment settings.')}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-app-line bg-app-soft px-3 py-2.5 text-sm font-semibold text-app-ink transition hover:bg-app-hover"
+        >
+          <Chrome size={15} />
+          Continue with Google
+        </button>
+
+        <div className="flex items-center gap-2">
+          <div className="h-px flex-1 bg-app-line" />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.13em] text-app-muted">or continue with</span>
+          <div className="h-px flex-1 bg-app-line" />
+        </div>
+
         <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-700">Email</label>
+          <label className="mb-1 block text-sm font-semibold text-app-ink">Email address</label>
           <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-700">Password</label>
+          <label className="mb-1 block text-sm font-semibold text-app-ink">Password</label>
           <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required />
-          <div className="mt-2 text-right text-xs">
+          <div className="mt-2 flex items-center justify-between text-xs">
+            <label className="inline-flex items-center gap-2 text-app-muted">
+              <input type="checkbox" className="h-4 w-4 rounded border-app-line" />
+              Remember me for 30 days
+            </label>
             <Link href="/forgot-password" className="font-semibold text-blue-700 hover:underline">
               Forgot password?
             </Link>
@@ -79,6 +98,9 @@ export default function LoginPage() {
           <LogIn size={15} className="mr-1" />
           {mutation.isPending ? 'Signing in...' : 'Sign in'}
         </Button>
+        <p className="text-center text-xs text-app-muted">
+          By continuing, you agree to SynapseHub terms and privacy policy.
+        </p>
       </form>
     </AuthShell>
   );

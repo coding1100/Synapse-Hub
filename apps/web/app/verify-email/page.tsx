@@ -65,7 +65,7 @@ export default function VerifyEmailPage() {
     >
       <div className="mt-6 space-y-4">
         {verifyMutation.isPending && (
-          <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600">
+          <p className="inline-flex items-center gap-2 text-sm font-semibold text-app-muted">
             <MailWarning size={15} />
             Verifying token...
           </p>
@@ -90,9 +90,9 @@ export default function VerifyEmailPage() {
             setFeedback(null);
             resendMutation.mutate();
           }}
-          className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+          className="space-y-3 rounded-2xl border border-app-line bg-app-soft p-4"
         >
-          <p className="text-sm font-semibold text-slate-700">Need another verification email?</p>
+          <p className="text-sm font-semibold text-app-ink">Need another verification email?</p>
           <Input
             type="email"
             required
@@ -105,7 +105,7 @@ export default function VerifyEmailPage() {
           </Button>
         </form>
 
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-app-muted">
           Continue to{' '}
           <Link href="/login" className="font-semibold text-blue-700 hover:underline">
             login

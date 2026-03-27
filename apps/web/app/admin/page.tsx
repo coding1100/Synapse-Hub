@@ -103,14 +103,14 @@ export default function AdminPage() {
 
   return (
     <AppShell title="Admin Panel">
-      <section className="mb-4 border-b border-slate-200 bg-white px-3 py-3 sm:px-4 sm:py-4">
+      <section className="app-panel mb-4 px-3 py-3 sm:px-4 sm:py-4">
         <p className="app-kicker">Automation and governance</p>
-        <h2 className="mt-1 text-3xl font-bold text-ink">Configure bots and internal automation securely</h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <h2 className="mt-1 text-3xl font-bold text-app-ink">Configure bots and internal automation securely</h2>
+        <p className="mt-2 text-sm text-app-muted">
           Owner and admin access only. Configure webhook/custom automation and rotate secrets regularly.
         </p>
       </section>
-      {!workspaceId && <p className="mb-4 text-sm text-slate-500">Select a workspace to manage bots and integrations.</p>}
+      {!workspaceId && <p className="mb-4 text-sm text-app-muted">Select a workspace to manage bots and integrations.</p>}
       {workspaceId && unauthorized && (
         <p className="mb-4 text-sm font-semibold text-red-600">
           You need OWNER or ADMIN role in this workspace to access admin controls.
@@ -122,11 +122,11 @@ export default function AdminPage() {
         </p>
       )}
 
-      <section className="overflow-hidden border-y border-slate-200 bg-white">
-        <div className="grid divide-y divide-slate-200 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+      <section className="app-panel overflow-hidden">
+        <div className="grid divide-y divide-app-line lg:grid-cols-2 lg:divide-x lg:divide-y-0">
           <div className="p-4 sm:p-5">
-            <h2 className="inline-flex items-center gap-2 text-xl font-bold text-ink">
-              <Bot size={19} className="text-blue-600" />
+            <h2 className="inline-flex items-center gap-2 text-xl font-bold text-app-ink">
+              <Bot size={19} className="text-indigo-600 dark:text-indigo-300" />
               Bot API
             </h2>
             <form onSubmit={onCreateBot} className="mt-3 flex gap-2">
@@ -137,28 +137,28 @@ export default function AdminPage() {
               </Button>
             </form>
             {createBot.data?.token && (
-              <p className="mt-3 bg-slate-50 px-2 py-2 text-xs text-slate-700">
+              <p className="mt-3 rounded-lg border border-app-line bg-app-soft px-2 py-2 text-xs text-app-ink">
                 New bot token: {createBot.data.token}
               </p>
             )}
-            <p className="mt-2 text-xs text-slate-500">Use header `x-bot-token` for bot event/message endpoints.</p>
+            <p className="mt-2 text-xs text-app-muted">Use header `x-bot-token` for bot event/message endpoints.</p>
 
-            <div className="mt-4 border-t border-slate-200">
+            <div className="mt-4 border-t border-app-line">
               {bots.map((bot) => (
-                <div key={bot.id} className="border-b border-slate-200 px-2 py-2.5 last:border-b-0">
-                  <p className="font-semibold text-slate-800">{bot.name}</p>
-                  <p className="text-xs text-slate-500">Scopes: {bot.scopes.join(', ')}</p>
+                <div key={bot.id} className="border-b border-app-line px-2 py-2.5 last:border-b-0">
+                  <p className="font-semibold text-app-ink">{bot.name}</p>
+                  <p className="text-xs text-app-muted">Scopes: {bot.scopes.join(', ')}</p>
                 </div>
               ))}
               {workspaceId && bots.length === 0 && !botsQuery.isLoading && (
-                <p className="px-2 py-3 text-sm text-slate-500">No bots configured.</p>
+                <p className="px-2 py-3 text-sm text-app-muted">No bots configured.</p>
               )}
             </div>
           </div>
 
           <div className="p-4 sm:p-5">
-            <h2 className="inline-flex items-center gap-2 text-xl font-bold text-ink">
-              <Cable size={19} className="text-blue-600" />
+            <h2 className="inline-flex items-center gap-2 text-xl font-bold text-app-ink">
+              <Cable size={19} className="text-indigo-600 dark:text-indigo-300" />
               Integrations
             </h2>
             <form onSubmit={onCreateIntegration} className="mt-3 grid gap-2">
@@ -180,21 +180,21 @@ export default function AdminPage() {
               </Button>
             </form>
             {createIntegration.data?.signingSecret && (
-              <p className="mt-3 bg-slate-50 px-2 py-2 text-xs text-slate-700">
+              <p className="mt-3 rounded-lg border border-app-line bg-app-soft px-2 py-2 text-xs text-app-ink">
                 Integration signing secret: {createIntegration.data.signingSecret}
               </p>
             )}
-            <p className="mt-2 text-xs text-slate-500">Use header `x-integration-secret` when sending integration events.</p>
+            <p className="mt-2 text-xs text-app-muted">Use header `x-integration-secret` when sending integration events.</p>
 
-            <div className="mt-4 border-t border-slate-200">
+            <div className="mt-4 border-t border-app-line">
               {integrations.map((integration) => (
-                <div key={integration.id} className="border-b border-slate-200 px-2 py-2.5 last:border-b-0">
-                  <p className="font-semibold text-slate-800">{integration.name}</p>
-                  <p className="text-xs uppercase text-blue-700">{integration.type}</p>
+                <div key={integration.id} className="border-b border-app-line px-2 py-2.5 last:border-b-0">
+                  <p className="font-semibold text-app-ink">{integration.name}</p>
+                  <p className="text-xs uppercase text-indigo-600 dark:text-indigo-300">{integration.type}</p>
                 </div>
               ))}
               {workspaceId && integrations.length === 0 && !integrationsQuery.isLoading && (
-                <p className="px-2 py-3 text-sm text-slate-500">No integrations configured.</p>
+                <p className="px-2 py-3 text-sm text-app-muted">No integrations configured.</p>
               )}
             </div>
           </div>

@@ -70,13 +70,13 @@ export default function DashboardPage() {
 
   return (
     <AppShell title="Dashboard">
-      <section className="app-glass p-4 sm:p-5">
+      <section className="app-panel p-4 sm:p-5">
         <div>
           <p className="app-kicker">Workspace pulse</p>
-          <h2 className="mt-1 text-3xl font-bold text-ink">
+          <h2 className="mt-1 text-3xl font-bold text-app-ink">
             {selectedWorkspace ? `Hello, welcome to ${selectedWorkspace.name}` : 'Select a workspace to get started'}
           </h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm text-app-muted">
             Track collaboration health, surface conversations quickly, and keep the team aligned.
           </p>
         </div>
@@ -88,8 +88,8 @@ export default function DashboardPage() {
           <span className="app-chip">Automation ready</span>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div className="grid divide-y divide-slate-200 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
+        <div className="app-panel-soft mt-4 overflow-hidden">
+          <div className="grid divide-y divide-app-line md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
             <MetricRow
               title="Workspaces"
               value={String(workspaceCount)}
@@ -119,40 +119,40 @@ export default function DashboardPage() {
       </section>
 
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-        <div className="app-glass p-4 sm:p-5">
-          <h3 className="text-xl font-bold text-ink">Team pulse</h3>
-          <p className="mt-1 text-sm text-slate-600">Quick glance at who is active and what needs attention.</p>
+        <div className="app-panel p-4 sm:p-5">
+          <h3 className="text-xl font-bold text-app-ink">Team pulse</h3>
+          <p className="mt-1 text-sm text-app-muted">Quick glance at who is active and what needs attention.</p>
 
           <div className="mt-4 flex flex-wrap gap-3">
             {pulseMembers.map((member) => (
               <div key={member} className="flex flex-col items-center gap-1">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-blue-700">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-app-line bg-app-soft text-sm font-semibold text-indigo-700 dark:text-indigo-300">
                   {member.slice(0, 2).toUpperCase()}
                 </span>
-                <span className="text-[11px] font-semibold text-slate-600">{member}</span>
+                <span className="text-[11px] font-semibold text-app-muted">{member}</span>
               </div>
             ))}
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="app-panel-soft mt-4 overflow-hidden">
             {pulseRows.map((row) => (
-              <article key={row.title} className="border-b border-slate-200 p-3 last:border-b-0">
-                <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <article key={row.title} className="border-b border-app-line p-3 last:border-b-0">
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-app-ink">
                   {row.icon}
                   {row.title}
                 </p>
-                <p className="mt-1 text-xs font-semibold text-blue-700">{row.subtitle}</p>
-                <p className="mt-1 text-xs text-slate-600">{row.body}</p>
+                <p className="mt-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300">{row.subtitle}</p>
+                <p className="mt-1 text-xs text-app-muted">{row.body}</p>
               </article>
             ))}
           </div>
         </div>
 
-        <div className="app-glass p-4 sm:p-5">
-          <h3 className="text-xl font-bold text-ink">Action center</h3>
-          <p className="mt-1 text-sm text-slate-600">Jump into core collaboration tasks.</p>
+        <div className="app-panel p-4 sm:p-5">
+          <h3 className="text-xl font-bold text-app-ink">Action center</h3>
+          <p className="mt-1 text-sm text-app-muted">Jump into core collaboration tasks.</p>
 
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="app-panel-soft mt-4 overflow-hidden">
             <ActionRow href="/messages" title="Open messages" subtitle="Continue channel and DM conversations" />
             <ActionRow href="/workspace" title="Manage members" subtitle="Invite teammates and assign roles" />
             <ActionRow href="/channels" title="Create channels" subtitle="Structure by product area or stream" />
@@ -162,10 +162,10 @@ export default function DashboardPage() {
 
           <div className="mt-4 app-muted-box">
             <p className="app-kicker">Current context</p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">
+            <p className="mt-1 text-sm font-semibold text-app-ink">
               {selectedWorkspace?.name ?? 'No workspace selected'}
             </p>
-            <p className="text-xs text-slate-500">{selectedWorkspace?.slug ?? '-'}</p>
+            <p className="text-xs text-app-muted">{selectedWorkspace?.slug ?? '-'}</p>
           </div>
         </div>
       </section>
@@ -187,11 +187,11 @@ function MetricRow({
   return (
     <div className="p-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-600">{title}</p>
+        <p className="text-sm font-semibold text-app-muted">{title}</p>
         {icon}
       </div>
-      <p className="mt-2 text-4xl font-bold text-ink">{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{hint}</p>
+      <p className="mt-2 text-4xl font-bold text-app-ink">{value}</p>
+      <p className="mt-1 text-xs text-app-muted">{hint}</p>
     </div>
   );
 }
@@ -206,9 +206,9 @@ function ActionRow({
   subtitle: string;
 }) {
   return (
-    <Link href={href} className="block border-b border-slate-200 px-3 py-3 transition hover:bg-slate-50 last:border-b-0">
-      <p className="text-sm font-semibold text-slate-800">{title}</p>
-      <p className="text-xs text-slate-500">{subtitle}</p>
+    <Link href={href} className="block border-b border-app-line px-3 py-3 transition hover:bg-app-hover last:border-b-0">
+      <p className="text-sm font-semibold text-app-ink">{title}</p>
+      <p className="text-xs text-app-muted">{subtitle}</p>
     </Link>
   );
 }

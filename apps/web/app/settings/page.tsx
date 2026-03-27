@@ -70,17 +70,17 @@ export default function SettingsPage() {
 
   return (
     <AppShell title="Settings">
-      <section className="app-glass mb-4 p-5">
+      <section className="app-panel mb-4 p-5">
         <p className="app-kicker">Account preferences</p>
-        <h2 className="mt-1 text-3xl font-bold text-ink">Tune profile details and collaboration defaults</h2>
+        <h2 className="mt-1 text-3xl font-bold text-app-ink">Tune profile details and collaboration defaults</h2>
       </section>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-5">
-          <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-ink">
-            <UserRoundCog size={20} className="text-blue-600" />
+          <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-app-ink">
+            <UserRoundCog size={20} className="text-indigo-600 dark:text-indigo-300" />
             Profile
           </h2>
-          {profileQuery.isLoading && <p className="mt-3 text-sm text-slate-500">Loading profile...</p>}
+          {profileQuery.isLoading && <p className="mt-3 text-sm text-app-muted">Loading profile...</p>}
           {profileQuery.isError && <p className="mt-3 text-sm font-semibold text-red-600">Unable to load profile.</p>}
           {!profileQuery.isLoading && !profileQuery.isError && (
             <form onSubmit={onSubmit} className="mt-4 space-y-3">
@@ -111,21 +111,21 @@ export default function SettingsPage() {
           )}
         </Card>
         <Card className="p-5">
-          <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-ink">
-            <ShieldCheck size={20} className="text-blue-600" />
+          <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-app-ink">
+            <ShieldCheck size={20} className="text-indigo-600 dark:text-indigo-300" />
             Preferences
           </h2>
-          <div className="mt-4 space-y-3 text-sm text-slate-700">
+          <div className="mt-4 space-y-3 text-sm text-app-ink">
             <label className="app-muted-box flex cursor-pointer items-center gap-2">
-              <BellRing size={14} className="text-blue-600" />
+              <BellRing size={14} className="text-indigo-600 dark:text-indigo-300" />
               <input type="checkbox" defaultChecked /> Enable thread notifications
             </label>
             <label className="app-muted-box flex cursor-pointer items-center gap-2">
-              <BellRing size={14} className="text-blue-600" />
+              <BellRing size={14} className="text-indigo-600 dark:text-indigo-300" />
               <input type="checkbox" defaultChecked /> Receive email mentions
             </label>
             <label className="app-muted-box flex cursor-pointer items-center gap-2">
-              <BellRing size={14} className="text-blue-600" />
+              <BellRing size={14} className="text-indigo-600 dark:text-indigo-300" />
               <input type="checkbox" /> Compact message density
             </label>
           </div>

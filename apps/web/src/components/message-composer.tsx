@@ -144,7 +144,7 @@ export function MessageComposer({
   };
 
   return (
-    <div className="border-t border-slate-200 bg-white/70 px-0 pt-3 sm:pt-4">
+    <div className="border-t border-app-line bg-app-panel px-0 pt-3 sm:pt-4">
       <div className="relative">
         {showSuggestions && (
           <MentionSuggestionsDropdown
@@ -166,25 +166,29 @@ export function MessageComposer({
           onKeyDown={onKeyDown}
           placeholder="Type a message"
           rows={3}
-          className="w-full resize-none rounded-xl border border-slate-300 bg-white p-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:p-3"
+          className="w-full resize-none rounded-xl border border-app-line bg-app-soft p-2.5 text-sm text-app-ink outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/45 sm:p-3"
         />
       </div>
 
       <div className="mt-2.5 space-y-2.5 sm:mt-3">
         <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
-          <p className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 sm:gap-2 sm:text-xs">
-            <AtSign size={12} />
-            Mentions enabled
-            <CornerDownLeft size={12} className="ml-1 sm:ml-2" />
-            Ctrl+Enter to send
-          </p>
+          <div className="inline-flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full border border-app-line bg-app-soft px-2 py-1 text-[11px] font-medium text-app-muted sm:text-xs">
+              <AtSign size={12} />
+              Mentions
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-app-line bg-app-soft px-2 py-1 text-[11px] font-medium text-app-muted sm:text-xs">
+              <CornerDownLeft size={12} />
+              Ctrl+Enter
+            </span>
+          </div>
           <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
             {onSchedule && (
               <button
                 type="button"
                 onClick={toggleSchedulePicker}
                 disabled={disabled}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:py-2.5"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-app-line bg-app-panel px-3 py-2 text-sm font-semibold text-app-ink transition hover:bg-app-hover disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:py-2.5"
               >
                 <CalendarClock size={14} />
                 {isSchedulePickerOpen ? 'Hide schedule' : 'Send later'}
@@ -204,15 +208,15 @@ export function MessageComposer({
         </div>
 
         {onSchedule && isSchedulePickerOpen && (
-          <div className="grid gap-2 border-t border-slate-200 pt-2.5 sm:grid-cols-[1fr_auto] sm:items-center">
-            <label className="inline-flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-600">
-              <CalendarClock size={14} className="text-slate-500" />
+          <div className="grid gap-2 border-t border-app-line pt-2.5 sm:grid-cols-[1fr_auto] sm:items-center">
+            <label className="inline-flex w-full items-center gap-2 rounded-xl border border-app-line bg-app-soft px-2.5 py-2 text-xs text-app-muted">
+              <CalendarClock size={14} className="text-app-muted" />
               <input
                 type="datetime-local"
                 value={scheduleAt}
                 min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
                 onChange={(event) => setScheduleAt(event.target.value)}
-                className="w-full bg-transparent outline-none"
+                className="w-full bg-transparent text-app-ink outline-none"
               />
             </label>
             <button
@@ -221,7 +225,7 @@ export function MessageComposer({
               onClick={() => {
                 void submitScheduledMessage();
               }}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:py-2.5"
+              className="inline-flex items-center justify-center rounded-xl border border-app-line bg-app-panel px-3 py-2 text-sm font-semibold text-app-ink transition hover:bg-app-hover disabled:cursor-not-allowed disabled:opacity-60 sm:py-2.5"
             >
               {isScheduling ? 'Scheduling...' : 'Schedule message'}
             </button>

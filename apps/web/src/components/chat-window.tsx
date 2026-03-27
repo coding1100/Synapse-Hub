@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import clsx from 'clsx';
 import { Bookmark, Hash, MessageCircle, MessageSquareReply, Pin } from 'lucide-react';
@@ -46,23 +46,22 @@ export function ChatWindow({
   onToggleBookmark?: (message: Message) => void;
 }) {
   const { user } = useAuth();
-
   const timeline = buildTimeline(messages);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-transparent">
-      <header className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3">
+      <header className="flex items-center justify-between border-b border-app-line px-3 py-2.5 sm:px-4 sm:py-3">
         <div className="min-w-0">
-          <h3 className="inline-flex items-center gap-2 truncate text-lg font-bold text-ink sm:text-xl">
+          <h3 className="inline-flex items-center gap-2 truncate text-lg font-bold text-app-ink sm:text-xl">
             {activeChannelType === 'DIRECT' ? (
-              <MessageCircle size={18} className="text-blue-600" />
+              <MessageCircle size={18} className="text-indigo-600 dark:text-indigo-300" />
             ) : (
-              <Hash size={18} className="text-blue-600" />
+              <Hash size={18} className="text-indigo-600 dark:text-indigo-300" />
             )}
             <span className="truncate">{activeChannelName ?? 'Select conversation'}</span>
           </h3>
-          <p className="mt-1 text-xs text-slate-500">
-            {renderChannelTypeLabel(activeChannelType)} · {messages.length}{' '}
+          <p className="mt-1 text-xs text-app-muted">
+            {renderChannelTypeLabel(activeChannelType)} | {messages.length}{' '}
             {messages.length === 1 ? 'message' : 'messages'}
           </p>
         </div>
@@ -91,7 +90,7 @@ export function ChatWindow({
         })}
 
         {messages.length === 0 && (
-          <div className="py-8 text-center text-sm text-slate-500">
+          <div className="py-8 text-center text-sm text-app-muted">
             No messages yet. Start the conversation.
           </div>
         )}
@@ -128,7 +127,9 @@ function ConversationBubble({
         <div
           className={clsx(
             'mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold uppercase',
-            isCurrentUser ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700',
+            isCurrentUser
+              ? 'bg-indigo-600 text-white dark:bg-indigo-500'
+              : 'bg-app-soft text-app-muted',
           )}
         >
           {resolveSenderInitials(sender)}
@@ -136,15 +137,15 @@ function ConversationBubble({
 
         <div className={clsx('min-w-0 flex-1', isCurrentUser && 'text-right')}>
           {!isCurrentUser && (
-            <p className="mb-1 truncate text-xs font-semibold text-slate-600">{sender}</p>
+            <p className="mb-1 truncate text-xs font-semibold text-app-muted">{sender}</p>
           )}
 
           <div
             className={clsx(
               'inline-block max-w-full rounded-2xl px-3 py-2 text-left text-sm leading-relaxed',
               isCurrentUser
-                ? 'rounded-br-md bg-blue-600 text-white'
-                : 'rounded-bl-md bg-slate-100 text-slate-800',
+                ? 'rounded-br-md bg-indigo-600 text-white dark:bg-indigo-500'
+                : 'rounded-bl-md border border-app-line bg-app-soft text-app-ink',
             )}
           >
             {isCurrentUser ? (
@@ -154,12 +155,12 @@ function ConversationBubble({
             )}
           </div>
 
-          <div className={clsx('mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500', isCurrentUser && 'justify-end')}>
+          <div className={clsx('mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-app-muted', isCurrentUser && 'justify-end')}>
             <time>{formatMessageTime(message.createdAt)}</time>
             <button
               type="button"
               onClick={() => onOpenThread(message)}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 hover:text-blue-700"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-app-muted hover:text-indigo-600 dark:hover:text-indigo-300"
             >
               <MessageSquareReply size={11} />
               {renderThreadCta(threadReplyCount)}
@@ -170,7 +171,7 @@ function ConversationBubble({
                 onClick={() => onTogglePin(message)}
                 className={clsx(
                   'inline-flex items-center gap-1 text-[11px] font-semibold',
-                  isPinned ? 'text-amber-700' : 'text-slate-600 hover:text-slate-800',
+                  isPinned ? 'text-amber-700 dark:text-amber-300' : 'text-app-muted hover:text-app-ink',
                 )}
               >
                 <Pin size={11} />
@@ -183,7 +184,7 @@ function ConversationBubble({
                 onClick={() => onToggleBookmark(message)}
                 className={clsx(
                   'inline-flex items-center gap-1 text-[11px] font-semibold',
-                  isBookmarked ? 'text-cyan-700' : 'text-slate-600 hover:text-slate-800',
+                  isBookmarked ? 'text-cyan-700 dark:text-cyan-300' : 'text-app-muted hover:text-app-ink',
                 )}
               >
                 <Bookmark size={11} />
@@ -200,11 +201,11 @@ function ConversationBubble({
 function DateSeparator({ label }: { label: string }) {
   return (
     <div className="my-2.5 flex items-center gap-2">
-      <div className="h-px flex-1 bg-slate-200" />
-      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <div className="h-px flex-1 bg-app-line" />
+      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-app-muted">
         {label}
       </span>
-      <div className="h-px flex-1 bg-slate-200" />
+      <div className="h-px flex-1 bg-app-line" />
     </div>
   );
 }
@@ -283,3 +284,4 @@ function formatDayLabel(value: string) {
 
   return date.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
 }
+

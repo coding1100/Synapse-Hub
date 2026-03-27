@@ -42,7 +42,7 @@ export default function MessagesPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center text-sm font-semibold text-slate-600">
+        <div className="flex min-h-screen items-center justify-center text-sm font-semibold text-app-muted">
           Loading messages...
         </div>
       }
@@ -530,7 +530,7 @@ function MessagesPageContent() {
   return (
     <AppShell title="Messages">
       {!workspaceId && (
-        <p className="mb-4 text-sm text-slate-500">
+        <p className="mb-4 text-sm text-app-muted">
           Select a workspace to start messaging.
         </p>
       )}
@@ -539,14 +539,14 @@ function MessagesPageContent() {
           Unable to load channels for this workspace.
         </p>
       )}
-      <section className="overflow-hidden border-y border-slate-200 bg-white">
+      <section className="app-panel overflow-hidden">
         <div
           className={clsx(
-            'grid min-h-[calc(100vh-12rem)] grid-cols-1 lg:min-h-[calc(100vh-14rem)] lg:divide-x lg:divide-slate-200',
+            'grid min-h-[calc(100vh-12rem)] grid-cols-1 lg:min-h-[calc(100vh-14rem)] lg:divide-x lg:divide-app-line',
             hasActiveThread ? 'lg:grid-cols-[20rem_1fr_22rem]' : 'lg:grid-cols-[20rem_1fr]',
           )}
         >
-          <div className="border-b border-slate-200 lg:border-b-0">
+          <div className="border-b border-app-line lg:border-b-0">
             <ChannelList
               channels={channels}
               selectedChannelId={selectedChannel?.id}
@@ -554,7 +554,7 @@ function MessagesPageContent() {
               onComposeDirectMessage={() => setIsDmComposerOpen(true)}
             />
           </div>
-          <div className="flex min-h-0 flex-col border-b border-slate-200 lg:border-b-0">
+          <div className="flex min-h-0 flex-col border-b border-app-line lg:border-b-0">
             <ChatWindow
               activeChannelName={resolveChannelName(selectedChannel, user?.id)}
               activeChannelType={selectedChannel?.type}
@@ -570,7 +570,7 @@ function MessagesPageContent() {
               <p
                 className={`px-3 py-2 text-sm font-semibold sm:px-4 ${
                   composerFeedback.toLowerCase().includes('scheduled')
-                    ? 'text-emerald-700'
+                    ? 'text-emerald-700 dark:text-emerald-300'
                     : 'text-red-600'
                 }`}
               >
@@ -587,16 +587,16 @@ function MessagesPageContent() {
                 onChange={setComposerContent}
               />
             </div>
-            <div className="border-t border-slate-200">
+            <div className="border-t border-app-line">
               <button
                 type="button"
                 onClick={() => setShowUtilities((value) => !value)}
-                className="w-full px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 transition hover:bg-slate-50 sm:px-4"
+                className="w-full px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.14em] text-app-muted transition hover:bg-app-hover sm:px-4"
               >
                 {showUtilities ? 'Hide utilities' : 'Show utilities'} ({utilityCount})
               </button>
               {showUtilities && (
-                <div className="border-t border-slate-200">
+                <div className="border-t border-app-line">
                   <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 sm:px-4">
                     <UtilityTabButton
                       label="Pinned"
@@ -642,7 +642,7 @@ function MessagesPageContent() {
             </div>
           </div>
           {hasActiveThread && (
-            <div className="border-t border-slate-200 lg:border-t-0">
+            <div className="border-t border-app-line lg:border-t-0">
               <ThreadPanel
                 rootMessage={threadRootMessage}
                 replies={replies}
@@ -656,7 +656,7 @@ function MessagesPageContent() {
         </div>
       </section>
       {isDmComposerOpen && (
-        <div
+          <div
           className="fixed inset-0 z-40 flex items-start justify-center bg-slate-900/35 p-4 pt-[14vh] sm:pt-[18vh]"
           onClick={(event) => {
             if (event.target === event.currentTarget) {
@@ -665,11 +665,11 @@ function MessagesPageContent() {
             }
           }}
         >
-          <div className="w-full max-w-xl border border-slate-200 bg-white shadow-2xl">
-            <header className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="app-panel w-full max-w-xl shadow-2xl">
+            <header className="flex items-center justify-between border-b border-app-line px-3 py-2.5 sm:px-4 sm:py-3">
               <div>
-                <h4 className="text-sm font-semibold text-slate-900 sm:text-base">Start new direct message</h4>
-                <p className="text-xs text-slate-500">Search teammate by name or email</p>
+                <h4 className="text-sm font-semibold text-app-ink sm:text-base">Start new direct message</h4>
+                <p className="text-xs text-app-muted">Search teammate by name or email</p>
               </div>
               <button
                 type="button"
@@ -677,15 +677,15 @@ function MessagesPageContent() {
                   setIsDmComposerOpen(false);
                   setDmSearchTerm('');
                 }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-app-muted transition hover:bg-app-hover hover:text-app-ink"
                 aria-label="Close new direct message dialog"
               >
                 <X size={16} />
               </button>
             </header>
-            <div className="border-b border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3">
-              <label className="inline-flex w-full items-center gap-2 border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-500">
-                <Search size={14} className="text-slate-400" />
+            <div className="border-b border-app-line px-3 py-2.5 sm:px-4 sm:py-3">
+              <label className="inline-flex w-full items-center gap-2 border border-app-line bg-app-soft px-2.5 py-2 text-sm text-app-muted">
+                <Search size={14} className="text-app-muted" />
                 <input
                   value={dmSearchTerm}
                   onChange={(event) => setDmSearchTerm(event.target.value)}
@@ -729,15 +729,15 @@ function MessagesPageContent() {
                       }
                     }
                   }}
-                  placeholder="Type a teammate name..."
+                  placeholder="Search teammate name or email..."
                   autoFocus
-                  className="w-full bg-transparent text-slate-700 outline-none placeholder:text-slate-400"
+                  className="w-full bg-transparent text-app-ink outline-none placeholder:text-app-muted"
                 />
               </label>
             </div>
             <div id="dm-target-list" role="listbox" className="max-h-80 overflow-y-auto">
               {filteredDirectTargets.length === 0 && (
-                <p className="px-3 py-3 text-sm text-slate-500 sm:px-4">No matching teammate found.</p>
+                <p className="px-3 py-3 text-sm text-app-muted sm:px-4">No matching teammate found.</p>
               )}
               {filteredDirectTargets.map((member, index) => (
                 <button
@@ -750,18 +750,18 @@ function MessagesPageContent() {
                     void startDirectMessage(member.userId);
                   }}
                   className={clsx(
-                    'flex w-full items-center gap-3 border-t border-slate-100 px-3 py-2.5 text-left transition first:border-t-0 sm:px-4',
-                    index === activeDmIndex ? 'bg-blue-50/70' : 'hover:bg-slate-50',
+                    'flex w-full items-center gap-3 border-t border-app-line px-3 py-2.5 text-left transition first:border-t-0 sm:px-4',
+                    index === activeDmIndex ? 'bg-indigo-50/70 dark:bg-indigo-500/20' : 'hover:bg-app-hover',
                   )}
                 >
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold uppercase text-slate-700">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-app-soft text-xs font-semibold uppercase text-app-muted">
                     {initialsFromName(member.user.displayName || member.user.email)}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-slate-800">
+                    <span className="block truncate text-sm font-semibold text-app-ink">
                       {member.user.displayName}
                     </span>
-                    <span className="block truncate text-xs text-slate-500">{member.user.email}</span>
+                    <span className="block truncate text-xs text-app-muted">{member.user.email}</span>
                   </span>
                 </button>
               ))}
@@ -845,8 +845,8 @@ function UtilityTabButton({
       className={clsx(
         'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition',
         active
-          ? 'border-blue-300 bg-blue-50 text-blue-700'
-          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+          ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/20 dark:text-indigo-200'
+          : 'border-app-line bg-app-panel text-app-muted hover:bg-app-hover',
       )}
     >
       {icon}
@@ -854,7 +854,7 @@ function UtilityTabButton({
       <span
         className={clsx(
           'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-          active ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600',
+          active ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200' : 'bg-app-soft text-app-muted',
         )}
       >
         {count}
@@ -880,20 +880,20 @@ function UtilityPanel({
   }[];
 }) {
   return (
-    <section className="border-t border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3">
-      <header className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+    <section className="border-t border-app-line px-3 py-2.5 sm:px-4 sm:py-3">
+      <header className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-app-muted">
         {title}
       </header>
       <div>
-        {items.length === 0 && <p className="px-1 py-2 text-sm text-slate-500">{emptyText}</p>}
+        {items.length === 0 && <p className="px-1 py-2 text-sm text-app-muted">{emptyText}</p>}
         {items.slice(0, 5).map((item) => (
-          <article key={item.id} className="border-t border-slate-200 px-1 py-2 first:border-t-0">
-            <p className="truncate text-xs font-semibold text-slate-700">{item.label}</p>
-            <p className="truncate text-sm text-slate-600">{item.description}</p>
+          <article key={item.id} className="border-t border-app-line px-1 py-2 first:border-t-0">
+            <p className="truncate text-xs font-semibold text-app-ink">{item.label}</p>
+            <p className="truncate text-sm text-app-muted">{item.description}</p>
             <button
               type="button"
               onClick={item.onAction}
-              className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+              className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
             >
               {item.actionIcon}
               {item.actionLabel}

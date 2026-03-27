@@ -1,73 +1,139 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Bot, MessageSquareText, Sparkles, UsersRound, Workflow } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function HomePage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center gap-10 px-6 py-20">
-      <div className="max-w-3xl">
-        <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm">
-          <Sparkles size={14} />
-          SynapseHub Collaboration Cloud
-        </span>
-        <h1 className="mt-5 text-5xl font-bold leading-tight text-ink lg:text-6xl">
-          Collaboration built for modern product teams.
-        </h1>
-        <p className="mt-4 text-lg text-slate-600">
-          A realtime workspace with channels, DMs, threads, mentions, bots, and delivery workflows in one polished platform.
-        </p>
-      </div>
+    <main className="app-page-bg min-h-screen px-3 py-3 sm:px-4 sm:py-4">
+      <div className="app-panel mx-auto flex min-h-[calc(100vh-1.5rem)] w-full max-w-[1380px] flex-col sm:min-h-[calc(100vh-2rem)]">
+        <header className="flex items-center justify-between border-b border-app-line px-4 py-3">
+          <div className="inline-flex items-center gap-2">
+            <span className="app-logo-mark">S</span>
+            <div>
+              <p className="text-sm font-semibold text-app-ink">SynapseHub</p>
+              <p className="text-xs text-app-muted">Team collaboration cloud</p>
+            </div>
+          </div>
+          <div className="inline-flex items-center gap-2">
+            <ThemeToggle compact />
+            <Link
+              href="/login"
+              className="app-control inline-flex h-9 items-center px-3 text-sm font-semibold"
+            >
+              Sign in
+            </Link>
+          </div>
+        </header>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/register"
-          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-accent to-accentDeep px-6 py-3 font-semibold text-white shadow-lg shadow-blue-200/70 transition hover:brightness-95"
-        >
-          Create account
-          <ArrowRight size={16} />
-        </Link>
-        <Link
-          href="/login"
-          className="rounded-2xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
-        >
-          Sign in
-        </Link>
-      </div>
+        <section className="grid flex-1 gap-5 px-4 py-5 lg:grid-cols-[1.2fr_0.8fr] lg:px-6 lg:py-6">
+          <div className="space-y-5">
+            <div>
+              <span className="app-chip inline-flex items-center gap-1.5">
+                <Sparkles size={13} />
+                SynapseHub Workspace Suite
+              </span>
+              <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight text-app-ink sm:text-5xl">
+                Collaboration built for modern product teams.
+              </h1>
+              <p className="mt-3 max-w-2xl text-base text-app-muted">
+                Realtime channels, direct messages, threads, search, file sharing, and automation in one
+                consistent workspace experience.
+              </p>
+            </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="app-glass p-5">
-          <MessageSquareText size={18} className="text-blue-600" />
-          <h2 className="mt-3 text-xl font-bold text-ink">Realtime messaging</h2>
-          <p className="mt-1 text-sm text-slate-600">Low-latency channels and thread-first conversations.</p>
-        </div>
-        <div className="app-glass p-5">
-          <UsersRound size={18} className="text-blue-600" />
-          <h2 className="mt-3 text-xl font-bold text-ink">Workspace governance</h2>
-          <p className="mt-1 text-sm text-slate-600">Role-based control for owners, admins, members, and guests.</p>
-        </div>
-        <div className="app-glass p-5">
-          <Bot size={18} className="text-blue-600" />
-          <h2 className="mt-3 text-xl font-bold text-ink">Automation ready</h2>
-          <p className="mt-1 text-sm text-slate-600">Integrate bots and external workflows without friction.</p>
-        </div>
-      </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Link
+                href="/register"
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+              >
+                Create account
+                <ArrowRight size={15} />
+              </Link>
+              <Link href="/login" className="app-control inline-flex items-center rounded-xl px-5 py-2.5 text-sm font-semibold">
+                Login
+              </Link>
+            </div>
 
-      <section className="app-glass grid gap-4 p-5 md:grid-cols-3">
-        <div className="app-muted-box">
-          <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <Workflow size={14} className="text-blue-600" />
-            Event-driven architecture
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Socket.IO, Redis Pub/Sub, and service boundaries for scale.</p>
-        </div>
-        <div className="app-muted-box">
-          <p className="text-sm font-semibold text-slate-800">Enterprise-safe auth</p>
-          <p className="mt-1 text-xs text-slate-500">JWT + refresh tokens, OAuth, RBAC, and audit trails.</p>
-        </div>
-        <div className="app-muted-box">
-          <p className="text-sm font-semibold text-slate-800">Operational clarity</p>
-          <p className="mt-1 text-xs text-slate-500">Observability-ready with logs, metrics, and deployment pipelines.</p>
-        </div>
-      </section>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <FeatureCard
+                icon={<MessageSquareText size={16} className="text-indigo-600 dark:text-indigo-300" />}
+                title="Realtime messaging"
+                subtitle="Low-latency channels and DM flows."
+              />
+              <FeatureCard
+                icon={<UsersRound size={16} className="text-indigo-600 dark:text-indigo-300" />}
+                title="Team governance"
+                subtitle="Role-based workspace controls."
+              />
+              <FeatureCard
+                icon={<Bot size={16} className="text-indigo-600 dark:text-indigo-300" />}
+                title="Automation ready"
+                subtitle="Bot and integration endpoints built in."
+              />
+            </div>
+          </div>
+
+          <aside className="app-panel-soft p-4">
+            <p className="app-kicker">Platform strengths</p>
+            <div className="mt-3 space-y-2">
+              <InfoRow
+                icon={<Workflow size={14} className="text-indigo-600 dark:text-indigo-300" />}
+                title="Event-driven architecture"
+                body="Socket.IO + Redis Pub/Sub with horizontal scalability."
+              />
+              <InfoRow
+                icon={<UsersRound size={14} className="text-indigo-600 dark:text-indigo-300" />}
+                title="Enterprise-ready auth"
+                body="JWT sessions, refresh tokens, OAuth, RBAC and audit logging."
+              />
+              <InfoRow
+                icon={<MessageSquareText size={14} className="text-indigo-600 dark:text-indigo-300" />}
+                title="Unified workspace UX"
+                body="Consistent light and dark mode across all product surfaces."
+              />
+            </div>
+          </aside>
+        </section>
+      </div>
     </main>
+  );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <article className="app-panel-soft p-3">
+      <div>{icon}</div>
+      <p className="mt-2 text-sm font-semibold text-app-ink">{title}</p>
+      <p className="mt-1 text-xs text-app-muted">{subtitle}</p>
+    </article>
+  );
+}
+
+function InfoRow({
+  icon,
+  title,
+  body,
+}: {
+  icon: ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <article className="app-panel border bg-app-panel p-3 shadow-none">
+      <p className="inline-flex items-center gap-2 text-sm font-semibold text-app-ink">
+        {icon}
+        {title}
+      </p>
+      <p className="mt-1 text-xs text-app-muted">{body}</p>
+    </article>
   );
 }

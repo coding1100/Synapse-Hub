@@ -55,14 +55,14 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create account"
-      subtitle="Provision your SynapseHub identity."
+      subtitle="Set up your SynapseHub identity and get started."
       footerLabel="Already have an account?"
       footerHref="/login"
-      footerLinkLabel="Login"
+      footerLinkLabel="Sign in"
     >
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-700">Display name</label>
+          <label className="mb-1 block text-sm font-semibold text-app-ink">Display name</label>
           <Input
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
@@ -70,11 +70,11 @@ export default function RegisterPage() {
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-700">Email</label>
+          <label className="mb-1 block text-sm font-semibold text-app-ink">Email address</label>
           <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-semibold text-slate-700">Password</label>
+          <label className="mb-1 block text-sm font-semibold text-app-ink">Password</label>
           <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required />
         </div>
         {mutation.isError && <p className="text-sm font-semibold text-red-600">{errorMessage}</p>}
@@ -82,6 +82,9 @@ export default function RegisterPage() {
           <UserPlus2 size={15} className="mr-1" />
           {mutation.isPending ? 'Creating account...' : 'Register'}
         </Button>
+        <p className="text-center text-xs text-app-muted">
+          We will send an email verification link after registration.
+        </p>
       </form>
     </AuthShell>
   );

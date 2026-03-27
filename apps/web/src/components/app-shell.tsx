@@ -8,6 +8,7 @@ import { Bell, Building2, Search, Settings2, UserCircle2 } from 'lucide-react';
 import { Sidebar } from './sidebar';
 import { NotificationPanel } from './notification-panel';
 import { UserProfileModal } from './user-profile-modal';
+import { ThemeToggle } from './theme-toggle';
 import { useAuth } from '@/providers/auth-provider';
 import { useWorkspace } from '@/providers/workspace-provider';
 
@@ -53,29 +54,29 @@ export function AppShell({
 
   if (!isLoaded || !isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm font-semibold text-slate-600">
+      <div className="flex min-h-screen items-center justify-center text-sm font-semibold text-app-muted">
         Loading session...
       </div>
     );
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-transparent lg:flex-row">
+    <div className="app-page-bg relative flex min-h-screen flex-col lg:flex-row">
       <Sidebar />
-      <main className="min-w-0 flex-1 p-2.5 sm:p-4 lg:p-5">
-        <div className="mx-auto flex h-full max-w-[1620px] flex-col gap-3 sm:gap-4">
+      <main className="min-w-0 flex-1 p-2.5 sm:p-4">
+        <div className="mx-auto flex h-full max-w-[1640px] flex-col gap-3">
           <motion.header
             initial={{ opacity: 0, y: isMobileViewport ? -4 : -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: isMobileViewport ? 0.14 : 0.2, ease: 'easeOut' }}
-            className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 border border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3"
+            className="app-panel sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 px-4 py-3 backdrop-blur"
           >
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-slate-900 sm:text-sm">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-app-ink sm:text-[15px]">
                 {user?.displayName ? `Hey ${user.displayName}, ${greeting}` : greeting}
               </p>
-              <div className="mt-1 inline-flex max-w-full items-center gap-2 text-xs text-slate-500">
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-blue-50 text-blue-700">
+              <div className="mt-1 inline-flex max-w-full items-center gap-2 text-sm text-app-muted">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
                   <Building2 size={12} />
                 </span>
                 <span className="truncate">
@@ -86,44 +87,67 @@ export function AppShell({
 
             <Link
               href="/search"
-              className="hidden min-w-[280px] max-w-[460px] flex-1 items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 transition hover:bg-slate-100 lg:flex"
+              className="hidden min-w-[320px] max-w-[500px] flex-1 items-center gap-2 rounded-xl border border-app-line bg-app-soft px-4 py-2.5 text-sm font-medium text-app-muted transition hover:bg-app-hover lg:flex"
             >
-              <Search size={14} className="text-slate-400" />
+              <Search size={15} className="text-app-muted" />
               <span className="w-full">Search here</span>
             </Link>
 
             <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+              <nav className="hidden items-center gap-1.5 xl:flex">
+                <Link
+                  href="/dashboard"
+                  className="rounded-lg px-2.5 py-1.5 text-sm font-semibold text-app-muted transition hover:bg-app-hover hover:text-app-ink"
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/messages"
+                  className="rounded-lg px-2.5 py-1.5 text-sm font-semibold text-app-muted transition hover:bg-app-hover hover:text-app-ink"
+                >
+                  Messages
+                </Link>
+                <Link
+                  href="/workspace"
+                  className="rounded-lg px-2.5 py-1.5 text-sm font-semibold text-app-muted transition hover:bg-app-hover hover:text-app-ink"
+                >
+                  Team
+                </Link>
+              </nav>
+
               <Link
                 href="/search"
-                className="inline-flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 lg:hidden"
+                className="app-control inline-flex h-11 w-11 items-center justify-center lg:hidden"
                 aria-label="Open search"
               >
-                <Search size={15} />
+                <Search size={16} />
               </Link>
 
               <button
                 type="button"
                 onClick={() => setIsNotificationsOpen((value) => !value)}
-                className="inline-flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 sm:h-10 sm:w-10"
+                className="app-control inline-flex h-11 w-11 items-center justify-center"
                 aria-label="Open notifications"
               >
-                <Bell size={15} />
+                <Bell size={16} />
               </button>
 
               <Link
                 href="/settings"
-                className="inline-flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 sm:h-10 sm:w-10"
+                className="app-control inline-flex h-11 w-11 items-center justify-center"
                 aria-label="Open settings"
               >
-                <Settings2 size={15} />
+                <Settings2 size={16} />
               </Link>
+
+              <ThemeToggle />
 
               <button
                 onClick={() => setIsProfileOpen(true)}
-                className="inline-flex items-center gap-1.5 border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 sm:gap-2 sm:px-2.5 sm:py-2 sm:text-sm"
+                className="app-control inline-flex h-11 items-center gap-1.5 px-3 text-sm font-semibold text-app-ink"
               >
-                <UserCircle2 size={18} className="text-blue-600" />
-                <span className="hidden sm:inline">{user?.displayName ?? 'Account'}</span>
+                <UserCircle2 size={19} className="text-indigo-600 dark:text-indigo-300" />
+                <span>{user?.displayName ?? 'Account'}</span>
               </button>
             </div>
           </motion.header>
